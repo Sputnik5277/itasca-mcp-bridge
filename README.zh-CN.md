@@ -11,6 +11,14 @@
 本 bridge 与具体产品解耦：它通过 ITASCA 通用命令语言 / Python SDK 驱动宿主，
 而非任何产品专有 API。
 
+## 数值模拟调研与后期计划
+
+本维护仓承接原放在 Lu Color Plot 的数值模拟调研。当前规划以统一的 **itasca-mcp＋bridge** 为主线，PFC／FLAC3D／3DEC 分仓保留为历史与迁移对照；UDEC 按用户说明单独维护，具体版本和台式机部署待回填。
+
+[完整 HTML](docs/itasca-simulation-research-20261026.html) · [可维护原稿／SIM 清单](docs/itasca-simulation-research-20261026.md) · [研究路线图](docs/ROADMAP-simulation-research.md)
+
+本次只迁移研究文档和待办，不升级桥代码或改动运行配置。
+
 ## 功能
 
 - **异步任务 + 进度轮询。** 提交长仿真脚本（`execute_task` 消息），运行期间轮询

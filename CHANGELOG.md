@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+- Own the simulation research HTML, editable source, evidence and planning roadmap migrated from `Sputnik5277/lu_color_plot`; add English and Chinese README entry points.
+- Record the unified `itasca-mcp + bridge` mainline, legacy per-product migration references, and separate UDEC / desktop clarification tasks. Bridge runtime code and package version are unchanged.
+
 ## [0.6.3] - 2026-10-05
 
 ### Added

@@ -11,6 +11,14 @@ tools for MCP servers such as [itasca-mcp](https://pypi.org/project/itasca-mcp/)
 The bridge is product-neutral: it drives the host through the shared ITASCA
 command language / Python SDK rather than any product-specific API.
 
+## Simulation research and planning
+
+This fork owns the numerical-simulation research previously delivered with Lu Color Plot. The planning baseline is the unified **itasca-mcp + bridge**; per-product PFC/FLAC3D/3DEC repositories are retained as migration references. UDEC remains a separate line per the owner; exact desktop versions and deployment are pending clarification.
+
+[HTML report](docs/itasca-simulation-research-20261026.html) · [Editable source / SIM catalogue](docs/itasca-simulation-research-20261026.md) · [Research roadmap](docs/ROADMAP-simulation-research.md)
+
+These are research documents and pending tasks, not a bridge runtime release.
+
 ## Features
 
 - **Async tasks with progress polling.** Submit a long simulation script

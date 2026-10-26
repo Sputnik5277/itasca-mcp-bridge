@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="zh-CN" data-style-version="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>煤岩与水作用研究的 Itasca 数值模拟资源图谱</title>
+  <style>
+    :root {
+      --ink: #171512;
+      --muted: #6a6258;
+      --soft: #91877a;
+      --paper: #f3eee5;
+      --surface: #fbf7ef;
+      --line: rgba(23, 21, 18, .15);
+      --line-strong: rgba(23, 21, 18, .3);
+      --red: #b6462d;
+      --red-soft: #f5ddd5;
+      --navy: #203447;
+      --green: #2f7257;
+      --amber: #9b6c15;
+      --mono: "Cascadia Mono", "SFMono-Regular", Consolas, "Microsoft YaHei UI", monospace;
+      --sans: "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+      --serif: Georgia, "Times New Roman", "Songti SC", "SimSun", serif;
+      --max: 1120px;
+    --sp-1: 4px;
+    --sp-2: 8px;
+    --sp-3: 12px;
+    --sp-4: 16px;
+    --sp-6: 24px;
+    --sp-8: 32px;
+    --top-h: 58px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(rgba(23,21,18,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(23,21,18,.035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      font-family: var(--sans);
+      font-size: 17px;
+      line-height: 1.78;
+      text-spacing-trim: trim-auto;
+      -webkit-font-smoothing: antialiased;
+    }
+    /* Reading progress: scroll-driven animation where supported, JS fallback below. */
+    @keyframes lp-progress {
+      from { transform: scaleX(0); }
+      to   { transform: scaleX(1); }
+    }
+    .progress {
+      position: fixed; left: 0; top: 0; z-index: 40;
+      width: 100%; height: 3px;
+      background: linear-gradient(90deg, var(--red), #d98746);
+      transform: scaleX(0); transform-origin: 0 50%;
+    }
+    @supports (animation-timeline: scroll()) {
+      .progress {
+        animation: lp-progress linear both;
+        animation-timeline: scroll(root block);
+      }
+    }
+    a { color: inherit; }
+    code, .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    code { font-size: .82em; padding: 1px 5px; background: rgba(23,21,18,.06); border-radius: 3px; }
+    .wrap { width: min(var(--max), calc(100% - 48px)); margin: 0 auto; }
+    .top {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(243,238,229,.93);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(14px);
+    }
+    .top-inner {
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 800; letter-spacing: -.01em; }
+    .brand-mark {
+      width: 30px; height: 30px; display: grid; place-items: center;
+      border: 1.5px solid var(--ink); border-radius: 50%;
+      background: var(--surface); font-family: var(--serif); font-size: 15px;
+    }
+    .nav { display: flex; gap: 20px; font-size: 12px; color: var(--muted); }
+    .nav a { text-decoration: none; border-bottom: 1px solid transparent; padding: 4px 0; }
+    .nav a:hover { color: var(--ink); border-color: var(--ink); }
+    .nav a.is-active { color: var(--ink); border-color: var(--red); }
+    header { padding: 74px 0 42px; border-bottom: 1px solid var(--line); scroll-margin-top: calc(var(--top-h) + 16px); }
+    .eyebrow {
+      display: flex; align-items: center; gap: 10px;
+      color: var(--red); font-size: 11px; font-weight: 800;
+      letter-spacing: .16em; text-transform: uppercase;
+    }
+    .eyebrow::before { content: ""; width: 28px; height: 1px; background: currentColor; }
+    h1 {
+      margin: 15px 0 0;
+      max-width: 900px;
+      font-family: var(--serif);
+      font-size: clamp(42px, 6vw, 76px);
+      font-weight: 650;
+      line-height: .98;
+      letter-spacing: -.045em;
+    }
+    .lead {
+      max-width: 790px;
+      margin: 24px 0 0;
+      color: var(--muted);
+      font-size: clamp(16px, 2vw, 20px);
+      line-height: 1.62;
+    }
+    .lead strong { color: var(--ink); }
+    .meta-line {
+      display: flex; flex-wrap: wrap; gap: 18px;
+      margin-top: 30px; color: var(--soft);
+      font-family: var(--mono); font-size: 11px;
+    }
+    .meta-line span { display: inline-flex; align-items: center; gap: 7px; }
+    .meta-line span::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--red); }
+    section { padding: 52px 0 0; }
+    .section-head {
+      display: grid;
+      grid-template-columns: 160px minmax(0, 1fr);
+      gap: 30px;
+      align-items: start;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--line);
+    }
+    .section-no {
+      color: var(--red); font-family: var(--mono); font-size: 13px;
+      font-weight: 700; letter-spacing: .08em; padding-top: 5px;
+    }
+    h2 {
+      margin: 0;
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.4vw, 43px);
+      font-weight: 620;
+      line-height: 1.12;
+      letter-spacing: -.03em;
+    }
+    .section-intro { max-width: 820px; margin: 12px 0 0; color: var(--muted); font-size: 16px; line-height: 1.75; }
+    section, h2, h3 { scroll-margin-top: calc(var(--top-h) + 16px); }
+    .callout {
+      margin: 22px 0 0;
+      padding: 20px 24px;
+      background: linear-gradient(105deg, var(--surface), #fdf8f4);
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--red);
+      border-radius: 8px;
+    }
+    .callout .tag {
+      color: var(--red); font-family: var(--mono); font-size: 10px;
+      font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    }
+    .callout p { margin: 5px 0 0; font-size: 18px; font-weight: 650; line-height: 1.55; }
+    .callout.ok { border-left-color: var(--green); background: linear-gradient(105deg, #fbfdf9, #f3f8f1); }
+    .callout.warn { border-left-color: var(--amber); background: linear-gradient(105deg, #fdfaf2, #fbf5e6); }
+    .callout.err { border-left-color: var(--red); background: linear-gradient(105deg, #fff9f6, #fdf3ef); }
+    .callout.ok .tag { color: var(--green); }
+    .callout.warn .tag { color: var(--amber); }
+    .metrics {
+      display: grid; grid-template-columns: repeat(4, minmax(0,1fr));
+      gap: 1px; margin-top: 24px;
+      background: var(--line); border: 1px solid var(--line);
+    }
+    .metric { background: var(--surface); padding: 18px 18px 16px; }
+    .metric .k { color: var(--soft); font-size: 11px; letter-spacing: .04em; }
+    .metric .v {
+      margin-top: 4px; font-family: var(--mono); font-size: 24px;
+      font-weight: 700; letter-spacing: -.04em; line-height: 1.2;
+    }
+    .metric .d { margin-top: 4px; color: var(--muted); font-size: 11.5px; line-height: 1.55; }
+    .metric.red .v { color: var(--red); }
+    .metric.green .v { color: var(--green); }
+    .metric.amber .v { color: var(--amber); }
+    .three-col { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 18px; margin-top: 24px; }
+    .layer { border-top: 3px solid var(--ink); padding-top: 13px; }
+    .layer:nth-child(2) { border-color: var(--red); }
+    .layer:nth-child(3) { border-color: var(--navy); }
+    .layer .label { color: var(--soft); font-family: var(--mono); font-size: 10px; letter-spacing: .08em; }
+    .layer h3 { margin: 4px 0 6px; font-family: var(--serif); font-size: 24px; font-weight: 620; letter-spacing: -.02em; }
+    .layer p { margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.65; }
+    .compare {
+      width: 100%; margin-top: 22px; border-collapse: collapse; font-size: 12.5px;
+    }
+    .compare th {
+      padding: 9px 10px; background: rgba(23,21,18,.055);
+      color: var(--muted); font-size: 10.5px; text-align: left;
+      letter-spacing: .05em; border-bottom: 1px solid var(--line-strong);
+    }
+    .compare td { padding: 11px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    .compare td:first-child { font-weight: 650; color: var(--ink); }
+    .status {
+      display: inline-block; padding: 1px 7px; border-radius: 99px;
+      font-size: 10px; font-weight: 750; white-space: nowrap;
+    }
+    .status.ok { color: #1e5e46; background: #dfeee5; }
+    .status.no { color: #96331f; background: #f7ded7; }
+    .status.warn { color: #76530d; background: #f4e8c8; }
+    .red-list { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; margin-top: 22px; }
+    .red-item {
+      padding: 18px 18px 16px;
+      background: #fff9f6;
+      border: 1px solid #e8c7bd;
+      border-top: 4px solid var(--red);
+      border-radius: 6px;
+    }
+    .red-item .n { color: var(--red); font-family: var(--mono); font-size: 10px; font-weight: 750; }
+    .red-item h3 { margin: 5px 0 5px; font-size: 15px; line-height: 1.45; }
+    .red-item p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .tree {
+      margin-top: 24px; padding: 24px 26px;
+      background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+      font-family: var(--mono); font-size: 12.5px; line-height: 2;
+      overflow-x: auto; white-space: pre;
+    }
+    .tree .root { color: var(--ink); font-weight: 750; }
+    .tree .cat { color: var(--red); font-weight: 650; }
+    .tree .note { color: var(--soft); }
+    .rules { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 0 34px; margin-top: 24px; }
+    .rule {
+      display: grid; grid-template-columns: 104px minmax(0,1fr);
+      gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--line);
+    }
+    .rule .k { color: var(--soft); font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em; }
+    .rule .v { font-size: 12.5px; line-height: 1.65; }
+    .flow { margin-top: 24px; display: grid; gap: 9px; }
+    .step {
+      display: grid; grid-template-columns: 44px minmax(0,1fr);
+      gap: 15px; align-items: start;
+      padding: 14px 16px; background: rgba(251,247,239,.7);
+      border: 1px solid var(--line); border-radius: 6px;
+    }
+    .step .num {
+      width: 30px; height: 30px; display: grid; place-items: center;
+      border: 1px solid var(--line-strong); border-radius: 50%;
+      color: var(--red); font-family: var(--mono); font-size: 11px; font-weight: 750;
+    }
+    .step h3 { margin: 0 0 3px; font-size: 13.5px; }
+    .step p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .phases { margin-top: 24px; display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+    .phase { min-height: 150px; padding: 14px 12px; background: var(--surface); }
+    .phase .p { color: var(--red); font-family: var(--mono); font-size: 10px; font-weight: 750; }
+    .phase h3 { margin: 5px 0 6px; font-size: 12.5px; line-height: 1.4; }
+    .phase p { margin: 0; color: var(--muted); font-size: 10.5px; line-height: 1.55; }
+    .phase.active { background: #fff8f5; }
+    .note-box {
+      margin-top: 24px; padding: 16px 18px;
+      border-left: 3px solid var(--amber); background: #fbf5e6;
+      color: var(--muted); font-size: 12.5px; line-height: 1.65;
+    }
+    .note-box strong { color: var(--ink); }
+    footer {
+      margin-top: 56px; padding: 22px 0 46px;
+      border-top: 1px solid var(--line);
+      color: var(--soft); font-family: var(--mono); font-size: 10.5px;
+      display: flex; justify-content: space-between; gap: 20px;
+    }
+    @media (max-width: 900px) {
+      .metrics { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .red-list, .three-col { grid-template-columns: 1fr; }
+      .phases { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .rules { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 680px) {
+      .wrap { width: min(var(--max), calc(100% - 30px)); }
+      .nav { display: none; }
+      header { padding-top: 48px; }
+      .section-head { grid-template-columns: 1fr; gap: 5px; }
+      .metrics { grid-template-columns: 1fr 1fr; }
+      .phases { grid-template-columns: 1fr; }
+      .phase { min-height: auto; }
+      .tree { padding: 18px; font-size: 11px; }
+      footer { flex-direction: column; }
+    }
+    @media print {
+      .top, .progress { display: none; }
+      body { background: #fff; }
+      section { padding-top: 24px; break-before: page; }
+      .callout, .metric, .red-item, .tree, .note-box { break-inside: avoid; }
+      a { text-decoration: none; }
+    }
+    .hero-result { border-left: 4px solid var(--red); padding: 12px 20px; background: var(--surface); margin: 20px 0; }
+    .result-label, .focus-label { color: var(--red); font-size: 12px; }
+    .result-title { font-size: 22px; font-weight: 700; margin: 8px 0; }
+    .focus-overview { display: grid; gap: 12px; margin: 24px 0; }
+    .focus-item { display: block; padding: 14px; border: 1px solid var(--line); }
+    .focus-item span { display: block; }
+    .focus-title { font-weight: 700; }
+    .round-detail { border-bottom: 1px solid var(--line); padding: 14px 0; }
+    .round-detail summary { cursor: pointer; font-weight: 700; }
+    .round-body { padding: 10px 0; }
+    .archive-tools { display: flex; gap: 8px; }
+    .enhancement-only:disabled { display: none; }
+    @media print { .archive-tools { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="progress" aria-hidden="true"></div>
+  <div class="top">
+    <div class="wrap top-inner">
+      <div class="brand"><span class="brand-mark">煤</span><span>煤岩与水作用研究的 Itasca 数值模拟资源图谱</span></div>
+      <nav class="nav"><a href="#section-1">原四个核心仓库分别承担什么</a><a href="#section-2">桥接运行层先解决执行与取数</a><a href="#section-3">建模与试验模拟从煤岩靶标开始</a><a href="#section-4">后处理把曲线、力链与裂纹连起来</a><a href="#section-5">AE 能量需要明确事件与量纲</a><a href="#section-6">论文图与可复用源码怎样交付</a><a href="#section-7">后期待办与本轮纠正</a><a href="#section-8">35 项完整清单怎样使用</a><a href="#section-9">自己账号下的 21 项逐项清单</a><a href="#section-10">外部研究主线、上游与补充候选 14 项</a><a href="#section-11">按研究需要逐项处理的队列</a><a href="#section-12">台式机、桥接协议与许可的具体纠正</a><a href="#section-13">本轮检索记录、待筛入口与范围</a></nav>
+    </div>
+  </div>
+  <header>
+    <div class="wrap">
+      <div class="eyebrow">数值模拟专项 · 2026-10-26</div>
+      <h1>煤岩与水作用研究的 Itasca 数值模拟资源图谱</h1>
+      <div class="hero-result"><div><p class="result-label">核心结论</p><p class="result-title">先建立可靠的模型与取数链路，再组织曲线、裂纹与 AE 图件</p></div><div class="result-context"><p>将自己的维护仓、对应上游、建模技能和方法代码合并对照；保留旧工具与待核条目，后期按 SIM 编号逐项处理。</p></div></div><p class="lead">从 Itasca 运行桥接到 AE 能量、空间破裂与可复用论文图源码</p>
+      <div class="meta-line"><span>35 项仓库入口 · 自有维护仓 21/21 · SIM 稳定编号 · OMP 轻量长页</span></div>
+    </div>
+  </header>
+  <main class="wrap"><p>本专项服务于水作用煤岩力学研究，重点衔接论文1_2的 DIC 应变场与 AE 能量—空间双视角：寻找能够解释刚度退化、裂纹聚集及能量释放的 PFC 建模、试验模拟和后处理入口。以下“已核”指仓库文本与文件结构核对；研究适配与后期计划均为建议，不代表已经完成数值验证。</p>
+<p><strong>项目归属与当前主线（2026-10-26 用户补充）：</strong> 本报告现由 <code>Sputnik5277/itasca-mcp-bridge</code> 维护。后续以统一的 <code>itasca-mcp＋bridge</code> 为主线，PFC／FLAC3D／3DEC 分仓作为历史与迁移对照；UDEC 按用户说明继续独立维护，具体版本、仓库关系和台式机部署情况待后续回填。文档迁移不升级桥代码或修改运行配置。</p>
+<p>上游核对中，旧 <code>yusong652/pfc-mcp</code> 的 API 请求已解析到 <code>yusong652/itasca-mcp</code>，支持入口合并这一判断；统一仓当前说明列有 PFC、FLAC、3DEC 等引擎。其他旧分仓和 UDEC 的 API 未取得可用记录，不能仅据此判定正式停止维护。以下日期与版本保留为迁移前核验快照，文档提交不视为引擎版本升级。</p>
+<section id="section-1">
+<div class="section-head">
+<div class="section-no">01</div>
+<div><h2>原四个核心仓库分别承担什么</h2>
+</div></div>
+<p>原四仓内容继续保留；本次通过 <code>gh repo list</code> 和 <code>gh api</code> 补充自有仓、上游及方法仓。默认分支提交、根许可、仓库关系和入口以本次 <a href="itasca-supplement-evidence-20261026.json">JSON 证据</a> 为快照；原 <a href="itasca-supplement-evidence-20261026.json">逐仓维护证据</a> 保留来源身份。完整 SIM 编号清单见第 09、10 节。</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可横向滚动的表格"><table class="compare"><thead><tr><th>仓库与 README</th><th>层次及可交付物</th><th>已核提交日期／短 SHA</th><th>根许可</th></tr></thead><tbody><tr><td><a href="https://github.com/yusong652/itasca-mcp/blob/main/README.md">itasca-mcp</a></td><td>文档检索、引擎桥接、任务执行与监控</td><td>10-24／f9a0e16</td><td>MIT</td></tr><tr><td><a href="https://github.com/jiangnan030-del/pfc-codex-skills/blob/main/README.md">pfc-codex-skills</a></td><td>试样、标准试验、标定、场图与 AE 模板</td><td>08-09／743a111</td><td>MIT，含独立许可子目录</td></tr><tr><td><a href="https://github.com/Echo-aloha/asphalt-codex-skills-5/blob/main/README.md">asphalt-codex-skills-5</a></td><td>PFC5 沥青专用流程、离线后处理示例</td><td>08-26（北京时间）／a47b379</td><td>MIT</td></tr><tr><td><a href="https://github.com/chendengji/itasca-parametric-skill/blob/master/README.md">itasca-parametric-skill</a></td><td>工况生成、批算、结果汇总、网格标定与绘图</td><td>07-29／9474f46</td><td>MIT</td></tr></tbody></table></div>
+<p>PFC 技能包的双目标标定子目录另采用 AGPL-3.0-or-later，见 <a href="https://github.com/jiangnan030-del/pfc-codex-skills/blob/main/skills/dual-target-calibration/NOTICE.md">NOTICE</a>。根 MIT 记录不能代替具体复用文件的许可判断。</p>
+</section>
+<section id="section-2">
+<div class="section-head">
+<div class="section-no">02</div>
+<div><h2>桥接运行层先解决执行与取数</h2>
+</div></div>
+<p>已核 itasca-mcp 当前 README 将十个工具分为五个文档工具和五个执行工具；执行侧需要引擎内桥接。可从 <a href="https://github.com/yusong652/itasca-mcp/blob/main/addon.py">addon.py</a> 和 <a href="https://github.com/yusong652/itasca-mcp/blob/main/src/itasca_mcp/bridge/client.py">桥接客户端源码</a> 进入，README 中的<a href="https://raw.githubusercontent.com/yusong652/itasca-mcp/assets/itasca-mcp.gif">操作演示</a>用于理解连接方式。</p>
+<p>它提供调用模型、读取状态和导出数据的通道。煤岩接触本构、含水分组与加载路径仍需建模技能和研究者定义。此前笔记中的另一台电脑、四套 server 与旧桥接协议仅为历史快照，本轮没有核实当前电脑运行栈，也不据此替换现役配置。桥接本身不具备作为 colorplot 绘图卡的输入输出闭环。</p>
+</section>
+<section id="section-3">
+<div class="section-head">
+<div class="section-no">03</div>
+<div><h2>建模与试验模拟从煤岩靶标开始</h2>
+</div></div>
+<p>建议以 pfc-codex-skills 的标准试验和脆性岩石专题为主要候选，先建立干燥基准，再按实测浸水组标定弹性模量、峰值强度与破坏形态。含水作用如何映射到胶结刚度、强度或摩擦参数，需要实验与机制依据；仅降低一个参数不足以说明水致损伤机制。</p>
+<p>批量工况可参考参数化仓的 <a href="https://github.com/chendengji/itasca-parametric-skill/blob/master/examples/pfc3d_ucs_fric/config.yaml">PFC3D 示例配置</a>与<a href="https://github.com/chendengji/itasca-parametric-skill/blob/master/examples/pfc3d_ucs_fric/ucs_template.p3dat">试样模板</a>。已读配置采用 PFC9，扫描摩擦与刚度，默认提取接触数、颗粒数和不平衡比；UCS 标定仍需自行实现提取函数，不能把示例命名当作完整强度标定结果。</p>
+<p>asphalt 仓明确限定 PFC5 沥青材料。可借其数据契约与离线后处理组织方法；Burger、Marshall 和车辙参数不直接迁移到煤岩。</p>
+</section>
+<section id="section-4">
+<div class="section-head">
+<div class="section-no">04</div>
+<div><h2>后处理把曲线、力链与裂纹连起来</h2>
+</div></div>
+<p>PFC 技能包已提供 <a href="https://github.com/jiangnan030-del/pfc-codex-skills/blob/main/skills/pfc-postprocessing/scripts/plot_curves.py">plot_curves.py</a>、场图和玫瑰图脚本；三维入口是 <a href="https://github.com/jiangnan030-del/pfc-codex-skills/blob/main/skills/pfc-vedo-postprocess/scripts/pfc_export.py">pfc_export.py</a> 与 view_balls.py。已读<a href="https://github.com/jiangnan030-del/pfc-codex-skills/blob/main/skills/pfc-vedo-postprocess/references/export-schema.md">导出契约</a>列出颗粒位置、位移、接触法向力、裂纹中心和类型，并要求确认力的正负号及裂纹尺寸约定。</p>
+<p>建议按峰前、峰值、峰后三个力学阶段对齐应力—应变、力链重排和张剪裂纹空间分布，再与 DIC 局部化带比较。表面 DIC 与内部颗粒场的观测范围不同，先统一坐标和阶段，再讨论空间对应。</p>
+<p>可跳转查看 asphalt 仓的<a href="https://github.com/Echo-aloha/asphalt-codex-skills-5/blob/main/skills/pfc-postprocessing/examples/animation_case/raw_frames/jieguo_1.png">已有示例帧</a>与<a href="https://github.com/Echo-aloha/asphalt-codex-skills-5/blob/main/skills/pfc-postprocessing/examples/animation_case/README.md">动画说明</a>。这是仓库教学素材入口，本轮未逐像素审图，不作为本研究结果。</p>
+</section>
+<section id="section-5">
+<div class="section-head">
+<div class="section-no">05</div>
+<div><h2>AE 能量需要明确事件与量纲</h2>
+</div></div>
+<p>旧笔记把 pfc-ae-energy 描述为纯参考资料；当前树中已见 <a href="https://github.com/jiangnan030-del/pfc-codex-skills/tree/main/skills/pfc-ae-energy/templates/heavy-ae">heavy-ae 模板</a>，含裂纹回调、导出 FISH 和多种绘图脚本。已读 <a href="https://github.com/jiangnan030-del/pfc-codex-skills/blob/main/skills/pfc-ae-energy/templates/heavy-ae/plot_ae_energy.py">plot_ae_energy.py</a>开头包含 CSV 读取、积分与应变求导，并依赖案例 config；这仍是待适配模板。</p>
+<p>建议分别记录断键、聚类事件、模型能量项和仪器 AE 能量，明确单位、时间窗、聚类规则及采样间隔，再比较累计变化与突增阶段。不能将一次断键等同一次实测 AE 事件，也不能直接把模型能量当仪器能量值；论文1_2可优先检验其与应变局部化是否同步。</p>
+</section>
+<section id="section-6">
+<div class="section-head">
+<div class="section-no">06</div>
+<div><h2>论文图与可复用源码怎样交付</h2>
+</div></div>
+<p>建议保留“输入数据—字段与单位—处理脚本—配置—图件”的完整链路。曲线和参数响应图可在数据契约稳定后评估接入 colorplot；力链、裂纹三维渲染应保留专用后端与相机配置。参数化仓的 <a href="https://github.com/chendengji/itasca-parametric-skill/blob/master/scripts/plot.py">plot.py</a>已核为 results.csv 驱动的基础 PNG 绘图入口，仍需另做论文排版适配。</p>
+<p>asphalt 的<a href="https://github.com/Echo-aloha/asphalt-codex-skills-5/tree/main/skills/pfc-postprocessing/examples/minimal_case">最小案例</a>提供曲线、场与方向数据，可用于后续熟悉字段；教学数据与真实实验、模拟输出分开保存。本轮不生成图，也不新增工作台卡片。</p>
+</section>
+<section id="section-7">
+<div class="section-head">
+<div class="section-no">07</div>
+<div><h2>后期待办与本轮纠正</h2>
+</div></div>
+<p>后期按以下顺序推进：</p>
+<ul><li>[ ] 锁定实际 PFC 版本与二维／三维要求，核实桥接和技能兼容性。</li><li>[ ] 选择一个干燥基准试验，明确弹性模量、峰值强度和破坏形态等靶标。</li><li>[ ] 适配并真实运行一个最小模型，核对导出字段、单位与 AE 能量定义。</li><li>[ ] 扩展有实验依据的浸水工况，联动曲线、裂纹与 AE 阶段。</li><li>[ ] 整理“预览图＋源码＋数据＋配色”成果包，再评估接入 Color Plot。</li></ul>
+<p>这些均为计划，本轮没有启动执行。</p>
+<p>原四仓 README、定向文件树与上述源码／配置／案例说明继续作为研究路线依据，本次扩充的清单和读取范围另见第 08—13 节；这不是逐仓完整源码审计。PFC 技能包 README 自述 24 个技能，旧笔记题名为 27 个，故不以数量作为筛选依据。参数化 README 列 UDEC，但当前统一桥接 README 未列；采用桥接仓的当前范围，统一包的 UDEC 支持保留待核。自有 udec-mcp 单列，其 TCP FISH socket 架构不能由统一 HTTP 桥推定支持。</p>
+<p>本机连接、脚本完整执行、图像质量及 PFC6/7 兼容性仍待后期验证；本轮没有安装或运行仿真。通用绘图卡的整理要求见 <a href="https://github.com/Sputnik5277/lu_color_plot/blob/main/docs/colorplot-card-research-20261026.md">Color Plot 专项</a>。</p>
+</section>
+<section id="section-8">
+<div class="section-head">
+<div class="section-no">08</div>
+<div><h2>35 项完整清单怎样使用</h2>
+</div></div>
+<p>本页共 35 个仓库入口：自己的相关仓库 21 项，原四个外部仓库，另补统一桥接与 PFC5 分支 2 项、方法／上游候选 8 项。相对前稿新增 31 项。自己的维护副本和对应上游分别留档并注明关系，仓库数不等于独立能力数。</p>
+<p>所有项目使用 SIM-001—SIM-035 稳定编号，后续直接指定编号处理。维护状态只按本次默认分支最近提交作快照，不将一次提交当作持续活跃。表内“源码入口”“图件文件”“数据／配置”表示文件或目录已定位，不保证彼此已构成可运行包；缺图、缺数据、许可未核和旧版本仍保留。</p>
+</section>
+<section id="section-9">
+<div class="section-head">
+<div class="section-no">09</div>
+<div><h2>自己账号下的 21 项逐项清单</h2>
+</div></div>
+<p>账号清单通过 gh repo list，limit 1000，以 itasca、pfc、flac、3dec、udec、acoustic、arma 等相关名称检出；这也保留了编辑工具、历史接口和方法副本，便于后期人工取舍。</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可横向滚动的表格"><table class="compare"><thead><tr><th>编号与仓库</th><th>用途</th><th>README／源码入口</th><th>图件与数据入口</th><th>最近提交／信号</th><th>根许可记录</th><th>后期动作</th></tr></thead><tbody><tr><td>SIM-001 <a href="https://github.com/Sputnik5277/itasca-mcp-bridge">Sputnik5277/itasca-mcp-bridge</a>；<a href="https://github.com/yusong652/itasca-mcp-bridge">关联上游</a></td><td>引擎桥接／GUI 数据通道</td><td><a href="https://github.com/Sputnik5277/itasca-mcp-bridge/blob/main/README.md">README</a> · <a href="https://github.com/Sputnik5277/itasca-mcp-bridge/blob/main/start_bridge.py">源码入口</a></td><td>对应图件待核；独立数据待核</td><td><a href="https://github.com/Sputnik5277/itasca-mcp-bridge/commit/c9c333dc2fdc05ffe67aa4b9b49bf8b17cefd9e6">2026-10-05</a>／近90天</td><td>MIT</td><td>先按具体客户端和引擎版本核对桥接协议；分别记录自己的维护副本和上游，暂不替换当前机器配置。</td></tr><tr><td>SIM-002 <a href="https://github.com/Sputnik5277/3dec-mcp">Sputnik5277/3dec-mcp</a></td><td>3DEC 专用 MCP</td><td><a href="https://github.com/Sputnik5277/3dec-mcp/blob/master/README.md">README</a> · <a href="https://github.com/Sputnik5277/3dec-mcp/tree/master/src">源码／示例目录</a></td><td>对应图件待核；独立数据待核</td><td><a href="https://github.com/Sputnik5277/3dec-mcp/commit/3d7d81a0830f0e8b8b0252d9898e2aa7d6480b0c">2026-06-23</a>／近一年</td><td>许可待核（未识别根 SPDX）</td><td>历史／迁移对照：块体／节理问题沿统一入口核版本，保留旧仓示例和工具差异。</td></tr><tr><td>SIM-003 <a href="https://github.com/Sputnik5277/udec-mcp">Sputnik5277/udec-mcp</a></td><td>UDEC 专用 MCP／TCP FISH</td><td><a href="https://github.com/Sputnik5277/udec-mcp/blob/master/README.md">README</a> · <a href="https://github.com/Sputnik5277/udec-mcp/tree/master/src">源码／示例目录</a></td><td>对应图件待核；独立数据待核</td><td><a href="https://github.com/Sputnik5277/udec-mcp/commit/207372481e5e979765f55775cb2b991f5acd4168">2026-06-23</a>／近一年</td><td>许可待核（未识别根 SPDX）</td><td>按 TCP FISH socket 单独核对，不能直接接到统一 HTTP 桥；版本与本机运行待核。</td></tr><tr><td>SIM-004 <a href="https://github.com/Sputnik5277/flac3d-mcp">Sputnik5277/flac3d-mcp</a></td><td>FLAC3D 专用 MCP</td><td><a href="https://github.com/Sputnik5277/flac3d-mcp/blob/main/README.md">README</a> · <a href="https://github.com/Sputnik5277/flac3d-mcp/tree/main/src">源码／示例目录</a></td><td>对应图件待核；独立数据待核</td><td><a href="https://github.com/Sputnik5277/flac3d-mcp/commit/8424a90237e1652b9033a7ba9f773149aaa2551e">2026-06-23</a>／近一年</td><td>MIT</td><td>历史／迁移对照：连续介质能力沿统一入口核版本，旧分仓的工具与资料另行映射。</td></tr><tr><td>SIM-005 <a href="https://github.com/Sputnik5277/pfc-mcp">Sputnik5277/pfc-mcp</a></td><td>PFC 专用 MCP</td><td><a href="https://github.com/Sputnik5277/pfc-mcp/blob/main/README.md">README</a> · <a href="https://github.com/Sputnik5277/pfc-mcp/tree/main/src">源码／示例目录</a></td><td>对应图件待核；独立数据待核</td><td><a href="https://github.com/Sputnik5277/pfc-mcp/commit/405f0caf091c6bed53d20302f14573fb5d1424e6">2026-06-23</a>／近一年</td><td>MIT</td><td>历史／迁移对照：核案例、经验库与 code-history 如何衔接统一入口，不作为新的独立接入主线。</td></tr><tr><td>SIM-006 <a href="https://github.com/Sputnik5277/itasca-mcp-common">Sputnik5277/itasca-mcp-common</a></td><td>per-product MCP 公共层</td><td><a href="https://github.com/Sputnik5277/itasca-mcp-common/blob/master/README.md">README</a> · <a href="https://github.com/Sputnik5277/itasca-mcp-common/tree/master/src">源码／示例目录</a></td><td>对应图件待核；独立数据待核</td><td><a href="https://github.com/Sputnik5277/itasca-mcp-common/commit/d13cf8e3417fbcadf848f6725fe788f12854a648">2026-06-10</a>／近一年</td><td>许可待核（未识别根 SPDX）</td><td>README 仍描述 WebSocket；按所依赖的具体 server／桥版本核对，不与新统一桥混用。</td></tr><tr><td>SIM-007 <a href="https://github.com/Sputnik5277/flac-mcp">Sputnik5277/flac-mcp</a>；<a href="https://github.com/yusong652/flac-mcp">关联上游</a></td><td>FLAC MCP 维护副本</td><td><a href="https://github.com/Sputnik5277/flac-mcp/blob/main/README.md">README</a> · <a href="https://github.com/Sputnik5277/flac-mcp/tree/main/scripts">源码／示例目录</a></td><td>对应图件待核；独立数据待核</td><td><a href="https://github.com/Sputnik5277/flac-mcp/commit/9d70e9ae91e46c40109238c97ffaafa9a9f49ef4">2026-06-03</a>／近一年</td><td>MIT</td><td>后置保留，与 FLAC3D 仓区分；按实际软件版本决定是否需要。</td></tr><tr><td>SIM-008 <a href="https://github.com/Sputnik5277/3dec-mcp-1">Sputnik5277/3dec-mcp-1</a>；<a href="https://github.com/charlie-945/3dec-mcp">关联上游</a></td><td>另一份 3DEC fork</td><td><a href="https://github.com/Sputnik5277/3dec-mcp-1/blob/main/README.md">README</a> · <a href="https://github.com/Sputnik5277/3dec-mcp-1/blob/main/addon.py">源码入口</a></td><td>对应图件待核；<a href="https://github.com/Sputnik5277/3dec-mcp-1/blob/main/src/threedec_mcp/knowledge/resources/command_docs/commands/fracture/copy.json">数据／配置</a></td><td><a href="https://github.com/Sputnik5277/3dec-mcp-1/commit/1189f50bd9515395aa8509013c0331f6d28685c0">2026-05-27</a>／近一年</td><td>MIT</td><td>先与主维护仓对照，确认差异后决定取舍，不作为另一套新能力重复接入。</td></tr><tr><td>SIM-009 <a href="https://github.com/Sputnik5277/Itasca-Bond-Damage-dll">Sputnik5277/Itasca-Bond-Damage-dll</a>；<a href="https://github.com/mociantia/Itasca-Bond-Damage-dll">关联上游</a></td><td>胶结损伤／C++ 本构插件</td><td><a href="https://github.com/Sputnik5277/Itasca-Bond-Damage-dll">仓库</a> · <a href="https://github.com/Sputnik5277/Itasca-Bond-Damage-dll/blob/main/Bond%20Damage%20usage%20examples/TX.dat">源码入口</a></td><td><a href="https://github.com/Sputnik5277/Itasca-Bond-Damage-dll/blob/main/Model%20user%20guide.pdf">图件文件</a>；独立数据待核</td><td><a href="https://github.com/Sputnik5277/Itasca-Bond-Damage-dll/commit/8a2f85bb7a548a45b13389a43ca20acc00986e2e">2025-02-10</a>／超一年</td><td>CC0-1.0</td><td>保留本构方法候选；先核引擎版本、编译工具链和模型参数，不直接将现成 DLL 用作已标定煤岩模型。</td></tr><tr><td>SIM-010 <a href="https://github.com/Sputnik5277/itasca-stub">Sputnik5277/itasca-stub</a>；<a href="https://github.com/panhaoyu/itasca-stub">关联上游</a></td><td>Python API 类型桩／开发辅助</td><td><a href="https://github.com/Sputnik5277/itasca-stub/blob/master/README.md">README</a> · 独立源码入口待核</td><td>对应图件待核；独立数据待核</td><td><a href="https://github.com/Sputnik5277/itasca-stub/commit/ba90daf43c5fd991ed5e9b40ed64da2e3dd7d456">2023-05-14</a>／超一年</td><td>MIT</td><td>用于补全和静态检查；不计作可运行试验模型或图模板。</td></tr><tr><td>SIM-011 <a href="https://github.com/Sputnik5277/PFC_pressure_pulse">Sputnik5277/PFC_pressure_pulse</a>；<a href="https://github.com/itascaconsulting/PFC_pressure_pulse">关联上游</a></td><td>压力脉冲／渗透相关算例</td><td><a href="https://github.com/Sputnik5277/PFC_pressure_pulse/blob/main/README.md">README</a> · <a href="https://github.com/Sputnik5277/PFC_pressure_pulse/blob/main/pfc_pressure_example/deliver/load.py">源码入口</a></td><td><a href="https://github.com/Sputnik5277/PFC_pressure_pulse/blob/main/pfc_example.pdf">图件文件</a>；<a href="https://github.com/Sputnik5277/PFC_pressure_pulse/blob/main/pfc_pressure_example/deliver/README.txt">数据／配置</a></td><td><a href="https://github.com/Sputnik5277/PFC_pressure_pulse/commit/3581207b865d878bee02151437a2625c8c4b14b8">2023-06-13</a>／超一年</td><td>许可待核（未识别根 SPDX）</td><td>水作用方向候选：先核边界、流体变量、软件版本与输出定义，不直接视作局部浸水损伤模型。</td></tr><tr><td>SIM-012 <a href="https://github.com/Sputnik5277/matlab-flac">Sputnik5277/matlab-flac</a>；<a href="https://github.com/dkaramitros/matlab-flac">关联上游</a></td><td>MATLAB–FLAC 工具</td><td><a href="https://github.com/Sputnik5277/matlab-flac/blob/main/README.md">README</a> · 独立源码入口待核</td><td>对应图件待核；独立数据待核</td><td><a href="https://github.com/Sputnik5277/matlab-flac/commit/baaf66d5c400cac876055ec7c5add3a0c8abc368">2023-05-24</a>／超一年</td><td>MIT</td><td>保留接口与数据交换参考；MATLAB 依赖、版本和结果格式待核。</td></tr><tr><td>SIM-013 <a href="https://github.com/Sputnik5277/DEM_PFC2D_models">Sputnik5277/DEM_PFC2D_models</a>；<a href="https://github.com/kchiama/DEM_PFC2D_models">关联上游</a></td><td>PFC2D 断层变形模型</td><td><a href="https://github.com/Sputnik5277/DEM_PFC2D_models/blob/main/README.md">README</a> · 独立源码入口待核</td><td>对应图件待核；独立数据待核</td><td><a href="https://github.com/Sputnik5277/DEM_PFC2D_models/commit/ae0cbc598354152df0340577b9bed450479f3304">2023-05-05</a>／超一年</td><td>许可待核（未识别根 SPDX）</td><td>可参考参数组织与变形场导出；地表断层算例需按煤岩试验另行建模。</td></tr><tr><td>SIM-014 <a href="https://github.com/Sputnik5277/Itasca-PFC3D-FISH_script-for-Notepad-plus-plus">Sputnik5277/Itasca-PFC3D-FISH_script-for-Notepad-plus-plus</a>；<a href="https://github.com/Wilson-TW/Itasca-PFC3D-FISH_script-for-Notepad-plus-plus">关联上游</a></td><td>PFC6 FISH 编辑辅助</td><td><a href="https://github.com/Sputnik5277/Itasca-PFC3D-FISH_script-for-Notepad-plus-plus/blob/main/README.md">README</a> · 独立源码入口待核</td><td>对应图件待核；独立数据待核</td><td><a href="https://github.com/Sputnik5277/Itasca-PFC3D-FISH_script-for-Notepad-plus-plus/commit/a0c9f626e9e160ab3298a8d488bd7ffe67a87cf2">2022-06-13</a>／超一年</td><td>MIT</td><td>后置工具项，核版本和编辑器配置；不作为仿真能力或科研图卡。</td></tr><tr><td>SIM-015 <a href="https://github.com/Sputnik5277/PFC3D_OpenFOAM">Sputnik5277/PFC3D_OpenFOAM</a>；<a href="https://github.com/itascaconsulting/PFC3D_OpenFOAM">关联上游</a></td><td>流体—颗粒耦合</td><td><a href="https://github.com/Sputnik5277/PFC3D_OpenFOAM/blob/master/README.md">README</a> · <a href="https://github.com/Sputnik5277/PFC3D_OpenFOAM/blob/master/pyDemFoam/setup.py">源码入口</a></td><td><a href="https://github.com/Sputnik5277/PFC3D_OpenFOAM/blob/master/diagram.png">图件文件</a>；<a href="https://github.com/Sputnik5277/PFC3D_OpenFOAM/blob/master/porous/vel.txt">数据／配置</a></td><td><a href="https://github.com/Sputnik5277/PFC3D_OpenFOAM/commit/39e6330a8c7efd383d99af9750ce7cc810ff7b0c">2022-01-29</a>／超一年</td><td>许可待核（未识别根 SPDX）</td><td>保留水力耦合方向；先核 PFC／OpenFOAM 版本、双向耦合和验证算例，作为后期独立任务。</td></tr><tr><td>SIM-016 <a href="https://github.com/Sputnik5277/Itasca-3dec2Tecplot">Sputnik5277/Itasca-3dec2Tecplot</a>；<a href="https://github.com/absterguy/Itasca-3dec2Tecplot">关联上游</a></td><td>3DEC5.2→Tecplot 后处理</td><td><a href="https://github.com/Sputnik5277/Itasca-3dec2Tecplot/blob/main/README.md">README</a> · 独立源码入口待核</td><td>对应图件待核；独立数据待核</td><td><a href="https://github.com/Sputnik5277/Itasca-3dec2Tecplot/commit/21fb341d41917badbba629aeb7855a49e2e08a69">2021-06-23</a>／超一年</td><td>MIT</td><td>旧版本转换参考；先核字段、坐标、单位与目标 Tecplot 格式。</td></tr><tr><td>SIM-017 <a href="https://github.com/Sputnik5277/Itasca_UDEC6.0_2_Tecplot360">Sputnik5277/Itasca_UDEC6.0_2_Tecplot360</a>；<a href="https://github.com/absterguy/Itasca_UDEC6.0_2_Tecplot360">关联上游</a></td><td>UDEC6→Tecplot 后处理</td><td><a href="https://github.com/Sputnik5277/Itasca_UDEC6.0_2_Tecplot360/blob/main/README.md">README</a> · 独立源码入口待核</td><td>对应图件待核；独立数据待核</td><td><a href="https://github.com/Sputnik5277/Itasca_UDEC6.0_2_Tecplot360/commit/59d743ab0b2161880bfad06f1025aa0c6795e0c4">2021-06-20</a>／超一年</td><td>MIT</td><td>旧版本转换参考；与现用 UDEC 输出对照后再决定适配。</td></tr><tr><td>SIM-018 <a href="https://github.com/Sputnik5277/Acoustic-emission-and-moment-tensor-simulation-with-discrete-element-method">Sputnik5277/Acoustic-emission-and-moment-tensor-simulation-with-discrete-element-method</a>；<a href="https://github.com/glx5027/Acoustic-emission-and-moment-tensor-simulation-with-discrete-element-method">关联上游</a></td><td>PFC5 AE 事件／矩张量</td><td><a href="https://github.com/Sputnik5277/Acoustic-emission-and-moment-tensor-simulation-with-discrete-element-method/blob/master/README.md">README</a> · <a href="https://github.com/Sputnik5277/Acoustic-emission-and-moment-tensor-simulation-with-discrete-element-method/blob/master/2D%20simulation/look_AE_2D.dat">源码入口</a></td><td>对应图件待核；独立数据待核</td><td><a href="https://github.com/Sputnik5277/Acoustic-emission-and-moment-tensor-simulation-with-discrete-element-method/commit/5d45c425522d0cfed3a931b0a786d0b5b1bd8810">2021-06-07</a>／超一年</td><td>Apache-2.0</td><td>优先方法参考：核事件定义、聚类、矩张量和能量量纲，后续与实测 AE、DIC 阶段对齐。</td></tr><tr><td>SIM-019 <a href="https://github.com/Sputnik5277/2021_ARMA_frac">Sputnik5277/2021_ARMA_frac</a>；<a href="https://github.com/itascaconsulting/2021_ARMA_frac">关联上游</a></td><td>PFC／FLAC3D 岩石爆破耦合</td><td><a href="https://github.com/Sputnik5277/2021_ARMA_frac/blob/main/README.txt">README</a> · <a href="https://github.com/Sputnik5277/2021_ARMA_frac/blob/main/load.py">源码入口</a></td><td><a href="https://github.com/Sputnik5277/2021_ARMA_frac/blob/main/matrix.png">图件文件</a>；<a href="https://github.com/Sputnik5277/2021_ARMA_frac/blob/main/fistSrc/dirContents.txt">数据／配置</a></td><td><a href="https://github.com/Sputnik5277/2021_ARMA_frac/commit/48168fa7fc84d2399f500f76986b4a3ef8679375">2021-02-07</a>／超一年</td><td>许可待核（未识别根 SPDX）</td><td>保留动力破裂与耦合算例；不能把爆破参数直接用于准静态浸水煤岩。</td></tr><tr><td>SIM-020 <a href="https://github.com/Sputnik5277/itasca-python">Sputnik5277/itasca-python</a>；<a href="https://github.com/itascaconsulting/itasca-python">关联上游</a></td><td>旧 Python 连接接口</td><td><a href="https://github.com/Sputnik5277/itasca-python/blob/master/README.md">README</a> · 独立源码入口待核</td><td>对应图件待核；独立数据待核</td><td><a href="https://github.com/Sputnik5277/itasca-python/commit/91c766abc64e4940605b454ef96ad694926b61d7">2020-07-24</a>／超一年</td><td>根正文为 BSD 三条款结构；子目录另核</td><td>低优先接口历史参考；README／各目录许可、当前原生 SDK 替代关系与版本另核。</td></tr><tr><td>SIM-021 <a href="https://github.com/Sputnik5277/itasca-emacs">Sputnik5277/itasca-emacs</a>；<a href="https://github.com/jkfurtney/itasca-emacs">关联上游</a></td><td>FISH／数据文件编辑辅助</td><td><a href="https://github.com/Sputnik5277/itasca-emacs/blob/master/README.md">README</a> · 独立源码入口待核</td><td>对应图件待核；独立数据待核</td><td><a href="https://github.com/Sputnik5277/itasca-emacs/commit/3d15dd1b70d6db69b0f4758a3e28b8b506cc84ca">2017-06-02</a>／超一年</td><td>许可待核（未识别根 SPDX）</td><td>旧编辑工具保留，不进入模型或图卡配额。</td></tr></tbody></table></div>
+</section>
+<section id="section-10">
+<div class="section-head">
+<div class="section-no">10</div>
+<div><h2>外部研究主线、上游与补充候选 14 项</h2>
+</div></div>
+<p>同一家族的上游保留为追溯与比较入口；空仓和许可未明确的旧仓只留待核记录。前四仓的研究路线仍见第01—07节。</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可横向滚动的表格"><table class="compare"><thead><tr><th>编号与仓库</th><th>用途</th><th>README／源码入口</th><th>图件与数据入口</th><th>最近提交／信号</th><th>根许可记录</th><th>后期动作</th></tr></thead><tbody><tr><td>SIM-022 <a href="https://github.com/yusong652/itasca-mcp">yusong652/itasca-mcp</a></td><td>新统一 MCP／文档与执行</td><td><a href="https://github.com/yusong652/itasca-mcp/blob/main/README.md">README</a> · <a href="https://github.com/yusong652/itasca-mcp/tree/main/scripts">源码／示例目录</a></td><td>对应图件待核；独立数据待核</td><td><a href="https://github.com/yusong652/itasca-mcp/commit/f9a0e16fb1fbccf913a118a63d10ee0b5091e49f">2026-10-24</a>／近90天</td><td>MIT</td><td>与旧 per-product 工具面、案例／经验库及桥接逐项比较，保持当前配置至兼容性核实。</td></tr><tr><td>SIM-023 <a href="https://github.com/jiangnan030-del/pfc-codex-skills">jiangnan030-del/pfc-codex-skills</a></td><td>建模、标定、AE、力链裂纹</td><td><a href="https://github.com/jiangnan030-del/pfc-codex-skills/blob/main/README.md">README</a> · <a href="https://github.com/jiangnan030-del/pfc-codex-skills/blob/main/skills/dual-target-calibration/adapters/check.py">源码入口</a></td><td><a href="https://github.com/jiangnan030-del/pfc-codex-skills/blob/main/skills/pfc-postprocessing/examples/animation_case/raw_frames/jieguo_1.png">图件文件</a>；<a href="https://github.com/jiangnan030-del/pfc-codex-skills/blob/main/skills/pfc-fast-calibration/agents/openai.yaml">数据／配置</a></td><td><a href="https://github.com/jiangnan030-del/pfc-codex-skills/commit/743a1119be791eee52b69d8e292167e02d6a29df">2026-08-09</a>／近90天</td><td>MIT；标定子目录另有 AGPL</td><td>研究主线：先选干燥基准和标准试验，再用可追溯字段串起力学、裂纹与能量图；注意子目录独立许可。</td></tr><tr><td>SIM-024 <a href="https://github.com/Echo-aloha/asphalt-codex-skills-5">Echo-aloha/asphalt-codex-skills-5</a></td><td>PFC5 沥青技能／离线后处理</td><td><a href="https://github.com/Echo-aloha/asphalt-codex-skills-5/blob/main/README.md">README</a> · <a href="https://github.com/Echo-aloha/asphalt-codex-skills-5/blob/main/skills/pfc5-ae-energy/scripts/ae_energy_metrics.py">源码入口</a></td><td><a href="https://github.com/Echo-aloha/asphalt-codex-skills-5/blob/main/skills/pfc-postprocessing/examples/animation_case/raw_frames/jieguo_1.png">图件文件</a>；<a href="https://github.com/Echo-aloha/asphalt-codex-skills-5/blob/main/skills/pfc5-servo-calibration/dependencies.json">数据／配置</a></td><td><a href="https://github.com/Echo-aloha/asphalt-codex-skills-5/commit/a47b37940efec2434929b70ff7c1c255a3975881">2026-08-26</a>／近90天</td><td>MIT</td><td>借鉴数据契约、示例组织和后处理源码；沥青材料参数与煤岩分开。</td></tr><tr><td>SIM-025 <a href="https://github.com/chendengji/itasca-parametric-skill">chendengji/itasca-parametric-skill</a></td><td>参数扫描／批算／结果汇总</td><td><a href="https://github.com/chendengji/itasca-parametric-skill/blob/master/README.md">README</a> · <a href="https://github.com/chendengji/itasca-parametric-skill/blob/master/scripts/calibrate.py">源码入口</a></td><td>对应图件待核；<a href="https://github.com/chendengji/itasca-parametric-skill/blob/master/examples/pfc3d_ucs_fric/config.yaml">数据／配置</a></td><td><a href="https://github.com/chendengji/itasca-parametric-skill/commit/9474f46cdb7b2f41b9405b5fadca05a89ed0c811">2026-07-29</a>／近90天</td><td>MIT</td><td>核 master 分支示例、桥接依赖和提取函数；UCS 目标提取及 PFC 版本仍需适配。</td></tr><tr><td>SIM-026 <a href="https://github.com/yusong652/itasca-mcp-bridge">yusong652/itasca-mcp-bridge</a>；对应 SIM-001</td><td>引擎桥接／GUI 数据通道</td><td><a href="https://github.com/yusong652/itasca-mcp-bridge/blob/main/README.md">README</a> · <a href="https://github.com/yusong652/itasca-mcp-bridge/blob/main/start_bridge.py">源码入口</a></td><td>对应图件待核；独立数据待核</td><td><a href="https://github.com/yusong652/itasca-mcp-bridge/commit/bb18b430e654d615add4e31fa2ba71dbb4bc2aea">2026-10-20</a>／近90天</td><td>MIT</td><td>先按具体客户端和引擎版本核对桥接协议；分别记录自己的维护副本和上游，暂不替换当前机器配置。</td></tr><tr><td>SIM-027 <a href="https://github.com/molt213/itasca-mcp-pfc5.00">molt213/itasca-mcp-pfc5.00</a></td><td>统一 MCP 的 PFC5 兼容分支</td><td><a href="https://github.com/molt213/itasca-mcp-pfc5.00/blob/main/README.md">README</a> · <a href="https://github.com/molt213/itasca-mcp-pfc5.00/blob/main/addon.py">源码入口</a></td><td>对应图件待核；<a href="https://github.com/molt213/itasca-mcp-pfc5.00/blob/main/bridge/itasca_mcp_bridge/_compat_marker.txt">数据／配置</a></td><td><a href="https://github.com/molt213/itasca-mcp-pfc5.00/commit/df98738625859e6531a7564889749cdbcf8dbf2c">2026-07-16</a>／近一年</td><td>MIT</td><td>与旧 PFC5 MCP、上游统一包比较；先核实际接口／桥与特定版本，不据仓库名认定本机可运行。</td></tr><tr><td>SIM-028 <a href="https://github.com/mociantia/Itasca-Bond-Damage-dll">mociantia/Itasca-Bond-Damage-dll</a>；对应 SIM-009</td><td>胶结损伤／C++ 本构插件</td><td><a href="https://github.com/mociantia/Itasca-Bond-Damage-dll">仓库</a> · <a href="https://github.com/mociantia/Itasca-Bond-Damage-dll/blob/main/Bond%20Damage%20usage%20examples/TX.dat">源码入口</a></td><td><a href="https://github.com/mociantia/Itasca-Bond-Damage-dll/blob/main/Model%20user%20guide.pdf">图件文件</a>；独立数据待核</td><td><a href="https://github.com/mociantia/Itasca-Bond-Damage-dll/commit/8a2f85bb7a548a45b13389a43ca20acc00986e2e">2025-02-10</a>／超一年</td><td>CC0-1.0</td><td>保留本构方法候选；先核引擎版本、编译工具链和模型参数，不直接将现成 DLL 用作已标定煤岩模型。</td></tr><tr><td>SIM-029 <a href="https://github.com/glx5027/Acoustic-emission-and-moment-tensor-simulation-with-discrete-element-method">glx5027/Acoustic-emission-and-moment-tensor-simulation-with-discrete-element-method</a>；对应 SIM-018</td><td>PFC5 AE 事件／矩张量</td><td><a href="https://github.com/glx5027/Acoustic-emission-and-moment-tensor-simulation-with-discrete-element-method/blob/master/README.md">README</a> · <a href="https://github.com/glx5027/Acoustic-emission-and-moment-tensor-simulation-with-discrete-element-method/blob/master/2D%20simulation/look_AE_2D.dat">源码入口</a></td><td>对应图件待核；独立数据待核</td><td><a href="https://github.com/glx5027/Acoustic-emission-and-moment-tensor-simulation-with-discrete-element-method/commit/5d45c425522d0cfed3a931b0a786d0b5b1bd8810">2021-06-07</a>／超一年</td><td>Apache-2.0</td><td>优先方法参考：核事件定义、聚类、矩张量和能量量纲，后续与实测 AE、DIC 阶段对齐。</td></tr><tr><td>SIM-030 <a href="https://github.com/itascaconsulting/PFC3D_OpenFOAM">itascaconsulting/PFC3D_OpenFOAM</a>；对应 SIM-015</td><td>流体—颗粒耦合</td><td><a href="https://github.com/itascaconsulting/PFC3D_OpenFOAM/blob/master/README.md">README</a> · <a href="https://github.com/itascaconsulting/PFC3D_OpenFOAM/blob/master/pyDemFoam/setup.py">源码入口</a></td><td><a href="https://github.com/itascaconsulting/PFC3D_OpenFOAM/blob/master/diagram.png">图件文件</a>；<a href="https://github.com/itascaconsulting/PFC3D_OpenFOAM/blob/master/porous/vel.txt">数据／配置</a></td><td><a href="https://github.com/itascaconsulting/PFC3D_OpenFOAM/commit/39e6330a8c7efd383d99af9750ce7cc810ff7b0c">2022-01-29</a>／超一年</td><td>许可待核（未识别根 SPDX）</td><td>保留水力耦合方向；先核 PFC／OpenFOAM 版本、双向耦合和验证算例，作为后期独立任务。</td></tr><tr><td>SIM-031 <a href="https://github.com/itascaconsulting/PFC_pressure_pulse">itascaconsulting/PFC_pressure_pulse</a>；对应 SIM-011</td><td>压力脉冲／渗透相关算例</td><td><a href="https://github.com/itascaconsulting/PFC_pressure_pulse/blob/main/README.md">README</a> · <a href="https://github.com/itascaconsulting/PFC_pressure_pulse/blob/main/pfc_pressure_example/deliver/load.py">源码入口</a></td><td><a href="https://github.com/itascaconsulting/PFC_pressure_pulse/blob/main/pfc_example.pdf">图件文件</a>；<a href="https://github.com/itascaconsulting/PFC_pressure_pulse/blob/main/pfc_pressure_example/deliver/README.txt">数据／配置</a></td><td><a href="https://github.com/itascaconsulting/PFC_pressure_pulse/commit/3581207b865d878bee02151437a2625c8c4b14b8">2023-06-13</a>／超一年</td><td>许可待核（未识别根 SPDX）</td><td>水作用方向候选：先核边界、流体变量、软件版本与输出定义，不直接视作局部浸水损伤模型。</td></tr><tr><td>SIM-032 <a href="https://github.com/itascaconsulting/2021_ARMA_frac">itascaconsulting/2021_ARMA_frac</a>；对应 SIM-019</td><td>PFC／FLAC3D 岩石爆破耦合</td><td><a href="https://github.com/itascaconsulting/2021_ARMA_frac/blob/main/README.txt">README</a> · <a href="https://github.com/itascaconsulting/2021_ARMA_frac/blob/main/load.py">源码入口</a></td><td><a href="https://github.com/itascaconsulting/2021_ARMA_frac/blob/main/matrix.png">图件文件</a>；<a href="https://github.com/itascaconsulting/2021_ARMA_frac/blob/main/fistSrc/dirContents.txt">数据／配置</a></td><td><a href="https://github.com/itascaconsulting/2021_ARMA_frac/commit/48168fa7fc84d2399f500f76986b4a3ef8679375">2021-02-07</a>／超一年</td><td>许可待核（未识别根 SPDX）</td><td>保留动力破裂与耦合算例；不能把爆破参数直接用于准静态浸水煤岩。</td></tr><tr><td>SIM-033 <a href="https://github.com/825811880/PFC3D-Calibration">825811880/PFC3D-Calibration</a></td><td>PFC3D 微参数标定</td><td><a href="https://github.com/825811880/PFC3D-Calibration/blob/master/README.md">README</a> · 独立源码入口待核</td><td>对应图件待核；<a href="https://github.com/825811880/PFC3D-Calibration/blob/master/test.txt">数据／配置</a></td><td><a href="https://github.com/825811880/PFC3D-Calibration/commit/86605bbc647075bff3ee739ee68b2041751ef6ee">2019-03-13</a>／超一年</td><td>许可待核（未识别根 SPDX）</td><td>历史标定方法候选；先核宏观靶标、参数空间、算法与许可，再讨论适配。</td></tr><tr><td>SIM-034 <a href="https://github.com/ChenXu16/Micro_parameters-calibration-of-PFC3D">ChenXu16/Micro_parameters-calibration-of-PFC3D</a></td><td>微参数标定占位／空仓</td><td><a href="https://github.com/ChenXu16/Micro_parameters-calibration-of-PFC3D">仓库</a> · 独立源码入口待核</td><td>对应图件待核；独立数据待核</td><td>无可读提交／空仓／待核</td><td>许可待核（未识别根 SPDX）</td><td>本次 API 返回空仓 409／404；仅保留待核入口，不进入当前实施队列。</td></tr><tr><td>SIM-035 <a href="https://github.com/klfy0405/agent-pfc3d5-triaxial-calibration">klfy0405/agent-pfc3d5-triaxial-calibration</a></td><td>PFC3D5 三轴标定 agent</td><td><a href="https://github.com/klfy0405/agent-pfc3d5-triaxial-calibration/blob/main/README.md">README</a> · <a href="https://github.com/klfy0405/agent-pfc3d5-triaxial-calibration/blob/main/triaxial_agent/cli.py">源码入口</a></td><td>对应图件待核；<a href="https://github.com/klfy0405/agent-pfc3d5-triaxial-calibration/blob/main/client_mcp.example.json">数据／配置</a></td><td><a href="https://github.com/klfy0405/agent-pfc3d5-triaxial-calibration/commit/6626075028c8a601ad373da7d4ce643752f76033">2026-10-21</a>／近90天</td><td>MIT</td><td>新增较近的标定候选；先核围压、宏观靶标、优化过程、输入输出与真实求解回执。</td></tr></tbody></table></div>
+</section>
+<section id="section-11">
+<div class="section-head">
+<div class="section-no">11</div>
+<div><h2>按研究需要逐项处理的队列</h2>
+</div></div>
+<p>先确定当前机器和实际 PFC 版本，再沿统一 itasca-mcp＋bridge 与技能包各选一个最小试验；旧分仓仅用于工具面和数据迁移对照。以下队列共用完整表编号，所有实施项均待办。</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可横向滚动的表格"><table class="compare"><thead><tr><th>优先方向</th><th>对应编号</th><th>后期可单独执行的任务</th><th>交付形式</th></tr></thead><tbody><tr><td>运行与桥接</td><td>SIM-005, SIM-001, SIM-022, SIM-026</td><td>以统一 itasca-mcp＋bridge 为主线核当前配置，per-product 仅作迁移对照，再完成受控最小任务</td><td>版本／协议对照、真实运行与取数回执</td></tr><tr><td>煤岩干燥基准</td><td>SIM-023, SIM-025</td><td>明确 E、峰值强度与破坏形态靶标，补实际提取函数再做参数扫描</td><td>模型源码、参数、输入与结果表</td></tr><tr><td>AE／能量／裂纹</td><td>SIM-023, SIM-029</td><td>区分断键、聚类事件、模型能量与仪器 AE；核矩张量、时间窗、量纲</td><td>分阶段曲线、裂纹场、处理源码与字段约定</td></tr><tr><td>PFC5 分支与标定</td><td>SIM-027, SIM-035, SIM-024</td><td>按实际版本决定是否需要，先核接口和三轴靶标，不直接套沥青参数</td><td>兼容性记录、最小模型及处理图</td></tr><tr><td>水作用／耦合后期专题</td><td>SIM-031, SIM-030</td><td>先研究渗透／耦合边界与验证算例，再讨论含水／局部浸水参数映射</td><td>有实验依据的工况设计及后处理</td></tr><tr><td>可复用图卡</td><td>SIM-025, SIM-024</td><td>先稳定曲线／统计数据字段，再按 Color Plot 卡包要求整理</td><td>预览图＋源码＋示例数据＋配色；力链三维另保留相机配置</td></tr></tbody></table></div>
+</section>
+<section id="section-12">
+<div class="section-head">
+<div class="section-no">12</div>
+<div><h2>台式机、桥接协议与许可的具体纠正</h2>
+</div></div>
+<p>历史笔记的 C:\Users\11408\Desktop\itasca-mcp\ 指向原机器快照。2026-10-02 的观察包含 pfc-mcp 405f0ca 和 bridge 本地改动；后续条目提出 git pull 建议，没有找到台式机更新完成的回报。当前电脑或台式机的安装、服务及引擎可用性仍待核，不能由仓库存在或 pushed_at 推断。</p>
+<p>自己的 bridge 默认分支为 c9c333dc／0.6.3（2026-10-05），仓库另有 10-20 推送活动。其 README 实际是 HTTP＋SSE，GitHub 简介的 WebSocket 措辞已落后；本次与上游 main 比较落后 3 提交。common 的 README 仍描述 WebSocket，udec-mcp 使用 TCP FISH socket，各自依赖必须按版本核对，不能只看包名统一替换。</p>
+<p>参数化仓默认分支为 master，本页修正原 main 链接。PFC 技能包根 MIT 不覆盖全部子目录；itasca-python 虽被 API 标为 NOASSERTION，根许可正文有 BSD 三条款结构且说明子目录可另有许可，不应仅凭元数据认定无许可或限制严格。其他未识别根许可的条目继续待核。</p>
+</section>
+<section id="section-13">
+<div class="section-head">
+<div class="section-no">13</div>
+<div><h2>本轮检索记录、待筛入口与范围</h2>
+</div></div>
+<p>本轮以自己的 21 仓及 fork／来源关系追溯为主要增量，另做六组主题、每组原查询与收窄／改写查询，共 12 次 GitHub 搜索。组合词零命中不代表没有相关项目，具体查询与结果见下表和 <a href="itasca-supplement-evidence-20261026.json">补充证据</a>。35 项清单完成身份／默认分支提交／根目录与许可入口盘点；19 处定向树和 README／源码片段仅覆盖所记录对象，不代替逐仓运行。</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可横向滚动的表格"><table class="compare"><thead><tr><th>主题组</th><th>原查询／返回总数</th><th>改写查询／返回总数</th></tr></thead><tbody><tr><td>1</td><td>Itasca PFC coal water fracture／0</td><td>Itasca PFC water in:readme／2</td></tr><tr><td>2</td><td>PFC acoustic emission moment tensor／0</td><td>PFC acoustic emission／0</td></tr><tr><td>3</td><td>PFC FLAC3D rock fracture／0</td><td>PFC FLAC3D fracture／0</td></tr><tr><td>4</td><td>3DEC UDEC fracture FISH／0</td><td>3DEC fracture／0</td></tr><tr><td>5</td><td>Itasca parameter calibration PFC／0</td><td>UDEC FISH／0</td></tr><tr><td>6</td><td>PFC hydromechanical water coupling／0</td><td>PFC calibration／9</td></tr></tbody></table></div>
+<p>另有 7 个搜索命中未纳入上述 35 项，保留待筛入口；它们可能是聚合清单或其他领域技能，尚未按源码／图件／许可核对。</p>
+<div data-accordion-group id="accordion-1"><div class="archive-tools"><button type="button" class="enhancement-only" data-round-action="open" disabled>全部展开</button><button type="button" class="enhancement-only" data-round-action="close" disabled>全部收起</button></div><details class="round-detail" id="accordion-1-item-1"><summary id="accordion-1-item-1-summary">展开未核搜索命中</summary><div class="round-body" id="accordion-1-item-1-body"><div class="table-scroll" tabindex="0" role="region" aria-label="可横向滚动的表格"><table class="compare"><thead><tr><th>待筛编号</th><th>仓库</th><th>命中组</th><th>状态</th></tr></thead><tbody><tr><td>SIM-P001</td><td><a href="https://github.com/JinZhangLab/PFCE">JinZhangLab/PFCE</a></td><td>6</td><td>待筛／尚未核对功能</td></tr><tr><td>SIM-P002</td><td><a href="https://github.com/MoonSoon69/awesome-mcp-servers-punkpeye">MoonSoon69/awesome-mcp-servers-punkpeye</a></td><td>1</td><td>待筛／尚未核对功能</td></tr><tr><td>SIM-P003</td><td><a href="https://github.com/Zehebi29/engineering-skill-hub">Zehebi29/engineering-skill-hub</a></td><td>1</td><td>待筛／尚未核对功能</td></tr><tr><td>SIM-P004</td><td><a href="https://github.com/konush/PFClusterCalib">konush/PFClusterCalib</a></td><td>6</td><td>待筛／尚未核对功能</td></tr><tr><td>SIM-P005</td><td><a href="https://github.com/kw3rk/actinf-pfc">kw3rk/actinf-pfc</a></td><td>6</td><td>待筛／尚未核对功能</td></tr><tr><td>SIM-P006</td><td><a href="https://github.com/mmylly/PFCalibration">mmylly/PFCalibration</a></td><td>6</td><td>待筛／尚未核对功能</td></tr><tr><td>SIM-P007</td><td><a href="https://github.com/spandeyehep/PFCalibration">spandeyehep/PFCalibration</a></td><td>6</td><td>待筛／尚未核对功能</td></tr></tbody></table></div></div></details></div>
+<p>本次完成清单扩充、来源入口与后期待办整理；安装、仿真、桥接迁移、真实图件复现与台式机部署均未启动。后续按编号逐项修改，通用图卡要求仍见 <a href="https://github.com/Sputnik5277/lu_color_plot/blob/main/docs/colorplot-card-research-20261026.md">Color Plot 专项</a>。</p>
+</section></main>
+  <footer class="wrap">
+    <span>煤岩与水作用研究的 Itasca 数值模拟资源图谱</span>
+    <span>2026-10-26</span>
+  </footer>
+  <script>
+    // Minimal no-dependency enhancement: progress fallback + nav scrollspy.
+    (function () {
+      var sda = false;
+      try { sda = CSS.supports("animation-timeline", "scroll()"); } catch (e) {}
+      var bar = document.querySelector(".progress");
+      if (bar && !sda) {
+        var onScroll = function () {
+          var max = document.documentElement.scrollHeight - innerHeight;
+          var p = max > 0 ? scrollY / max : 0;
+          bar.style.transform = "scaleX(" + p + ")";
+        };
+        addEventListener("scroll", onScroll, { passive: true });
+        addEventListener("resize", onScroll);
+        onScroll();
+      }
+      var links = [].slice.call(document.querySelectorAll(".nav a[href^='#']"));
+      if (links.length) {
+        var targets = links
+          .map(function (a) { return document.getElementById(a.getAttribute("href").slice(1)); })
+          .filter(Boolean);
+        var mark = function () {
+          var point = scrollY + innerHeight * 0.2;
+          var active = null;
+          for (var i = 0; i < targets.length; i++) {
+            if (targets[i].offsetTop <= point) active = targets[i];
+          }
+          links.forEach(function (a) {
+            a.classList.toggle("is-active", !!active && a.getAttribute("href") === "#" + active.id);
+          });
+        };
+        addEventListener("scroll", mark, { passive: true });
+        addEventListener("resize", mark);
+        mark();
+      }
+      document.querySelectorAll('[data-round-action]').forEach(function (button) {
+        button.disabled = false;
+        button.addEventListener('click', function () {
+          button.closest('[data-accordion-group]').querySelectorAll('details').forEach(function (item) {
+            item.open = button.dataset.roundAction === 'open';
+          });
+        });
+      });
+      function openHash() {
+        var id; try { id = decodeURIComponent(location.hash.slice(1)); } catch (e) { return; }
+        var target = document.getElementById(id);
+        if (!target) return;
+        var detail = target.closest('details');
+        if (detail) { detail.open = true; target.scrollIntoView(); }
+      }
+      addEventListener('hashchange', openHash); openHash();
+      var printState = [];
+      addEventListener('beforeprint', function () {
+        printState = Array.from(document.querySelectorAll('details')).map(function (d) { var state = [d, d.open]; d.open = true; return state; });
+      });
+      addEventListener('afterprint', function () { printState.forEach(function (state) { state[0].open = state[1]; }); });
+    })();
+  </script>
+</body>
+</html>
