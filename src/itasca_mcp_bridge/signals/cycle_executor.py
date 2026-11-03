@@ -113,17 +113,27 @@ def _run_pending_snippet(code, request_id, future):
     so the cycle-callback registry is live by definition, and it must
     not be mutated from within a callback.
     """
+    from ..execution.main_thread import begin_call, end_call
     from ..execution.snippet import run_snippet
 
+    # Listed like the executor's own calls, so one the engine abandons is
+    # settled when the cycling command it ran inside returns (see
+    # execution.main_thread._running); its callback depth goes back too.
+    depth = _callback_depth[0] - 1
+    call = begin_call(run_snippet, future, unwind=lambda: _callback_depth.__setitem__(0, depth))
     try:
         result = run_snippet(code, StringIO(), request_id=request_id, ensure_callbacks=False)
-        future.set_result(result)
+        if not future.done():
+            future.set_result(result)
     except BaseException as e:
         # ``run_snippet`` catches BaseException internally; this is
         # defence-in-depth so a future change that lets one slip
         # doesn't strand the future.
         logger.error("Snippet callback execution failed: %s", e)
-        future.set_exception(e)
+        if not future.done():
+            future.set_exception(e)
+    finally:
+        end_call(call)
 
 
 def _mcp_bridge_executor_callback():
@@ -217,3 +227,31 @@ def is_executor_callback_registered():
     # type: () -> bool
     """Check if executor callback is registered."""
     return _callback_registered
+
+
+def unregister_executor_callback(itasca_module):
+    # type: (Any) -> None
+    """Inverse of register_executor_callback(), for ``stop()``.
+
+    Removes the engine callback, fails every snippet still waiting for a
+    cycle gap (their requests are answered with the error), and clears
+    the registered flag so a later start() can register again. The
+    function stays in ``__main__`` (see unregister_interrupt_callback).
+    """
+    global _callback_registered
+    import queue as _queue
+
+    from .positions import remove_cycle_callback
+
+    remove_cycle_callback(itasca_module, "_mcp_bridge_executor_callback", EXECUTOR_CALLBACK_POSITION)
+    while True:
+        try:
+            _code, _request_id, future = _pending_queue.get_nowait()
+        except _queue.Empty:
+            break
+        try:
+            future.set_exception(RuntimeError("bridge stopped"))
+        except Exception:
+            pass
+    _callback_registered = False
+    logger.info("Executor callback unregistered")

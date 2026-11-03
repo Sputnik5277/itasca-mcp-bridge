@@ -55,7 +55,7 @@ def split_engine_commands(multiline_str, keep_comments=False):
 
     Handles:
     - Newline-separated commands
-    - ITASCA line continuation with '...' at end of line
+    - ITASCA line continuation with '...' or a separate '&' at end of line
     - ITASCA comments starting with ';' — dropped, or emitted as their
       own entries (starting with ';') when ``keep_comments`` is set, so a
       caller replaying a data file can echo them in place
@@ -106,10 +106,15 @@ def split_engine_commands(multiline_str, keep_comments=False):
             block_lines = [stripped]
             continue
 
-        # Check for ITASCA line continuation (... at end)
+        # Legacy 3DEC data files also use a trailing, separate '&'.  Feed
+        # the complete command to itasca.command instead of leaving it
+        # waiting for the rest of a tetrahedron definition.
         if stripped.endswith("..."):
             # Remove the '...' and accumulate
             current.append(stripped[:-3].rstrip())
+            continue
+        if stripped.endswith(" &"):
+            current.append(stripped[:-1].rstrip())
             continue
 
         # No continuation — complete the current command

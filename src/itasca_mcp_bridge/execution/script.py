@@ -14,7 +14,7 @@ import time
 import traceback
 from typing import Any, Dict
 
-from .main_thread import MainThreadExecutor
+from .main_thread import MainThreadExecutor, on_abandon
 from ..utils import (
     path_to_llm_format,
     path_utils,
@@ -86,6 +86,13 @@ class ScriptRunner:
         # empty and the script's first `model cycle` wedges the bridge.
         ensure_cycle_callbacks()
 
+        # The script is the agent's work the person may want to open or
+        # rerun: it is listed in the GUI project's Data Files once the task
+        # is over and the GUI idle again (see console.project_files).
+        from ..console.project_files import flush_deferred as flush_data_files
+        from ..console.project_files import refresh_editors
+        from ..console.project_files import register as register_data_file
+
         # Plots the script opens reach the client's next read (see
         # console.views); never raises.
         from ..console.views import after_bridge_code
@@ -97,6 +104,34 @@ class ScriptRunner:
 
         # Set current task for interrupt callback
         set_current_task(task_id)
+
+        def _restore():
+            # Always restore stdout
+            sys.stdout = old_stdout
+            after_bridge_code()
+            # Clear current task and interrupt flag
+            clear_current_task()
+            clear_interrupt(task_id)
+            register_data_file(script_path, force=True)
+            flush_data_files()
+            refresh_editors()
+
+        capture = []  # the engine-console capture, once entered
+
+        def _abandoned(message):
+            # The engine never came back to this frame, so neither the
+            # capture's exit nor the finally below will run.
+            if capture:
+                capture[0].__exit__(None, None, None)
+            _restore()
+            return {
+                "status": "error",
+                "message": message,
+                "result": None,
+                "output": output_buffer.getvalue(),
+            }
+
+        on_abandon(self._execute, _abandoned)
 
         try:
             # Use IPython's global namespace for persistent state across scripts
@@ -125,7 +160,9 @@ class ScriptRunner:
             # itasca.command calls, interleaved with Python prints in
             # execution order via the active sys.stdout (TeeBuffer).
             cmdlog_dir = path_utils.logs_dir()
-            with capture_engine_console(sys.stdout, cmdlog_dir):
+            console = capture_engine_console(sys.stdout, cmdlog_dir)
+            with console:
+                capture.append(console)
                 # Try to execute as expression first (single line, returns value)
                 try:
                     # Use compile() with script_path for better traceback
@@ -262,12 +299,7 @@ class ScriptRunner:
             }
 
         finally:
-            # Always restore stdout
-            sys.stdout = old_stdout
-            after_bridge_code()
-            # Clear current task and interrupt flag
-            clear_current_task()
-            clear_interrupt(task_id)
+            _restore()
 
     def run(self, script_path, description, task_id):
         # type: (str, str, str) -> Dict[str, Any]

@@ -128,6 +128,38 @@ ANNOUNCEMENTS = {
         "Needs the matching itasca-mcp release on the agent side; older ones "
         "simply do not show it.",
     ),
+    "0.6.4": (
+        "An engine error that pops up a message box from a Python call (PFC "
+        "7.0: a conveyor velocity not parallel to the facets) now comes back "
+        "to your agent right away with the engine's message; before, the call "
+        "hung until it timed out, and afterwards every cycle you started in "
+        "the GUI stopped at once as 'interrupted by user'.",
+        "A client disconnecting no longer prints a ConnectionAbortedError "
+        "traceback in your console.",
+    ),
+    "0.6.5": (
+        "Save files no longer carry the bridge's cycle callbacks: a .sav written "
+        "while the bridge runs now restores cleanly in a session without it "
+        "(6.0 products used to crash on the first cycle).",
+        "Saves from earlier bridge versions still name them -- restore and re-save "
+        "with the bridge running, or define _mcp_bridge_interrupt_check and "
+        "_mcp_bridge_executor_callback as no-op functions before restoring without it.",
+        "itasca_mcp_bridge.stop() takes the bridge down and leaves the product as "
+        "before start(); itasca_mcp_bridge.status() shows version, port and "
+        "whether the engine is busy.",
+    ),
+    "0.6.6": (
+        "Fixes a PFC 6.0 crash on `model save` issued from inside a Python cycle "
+        "callback (introduced in 0.6.5). Saving from a callback is safe again and "
+        "the file still leaves out the bridge's callbacks.",
+    ),
+    "0.6.7": (
+        "The scripts and data files your agent runs now appear in the Project "
+        "pane's Data Files, and a file it changes while you have it open in the "
+        "editor is reloaded right away (files with unsaved edits still ask you).",
+        "Your agent now sees your edits too: when you save a data file in the "
+        "editor it gets the diff, and it holds off writing a file you are editing.",
+    ),
 }
 
 

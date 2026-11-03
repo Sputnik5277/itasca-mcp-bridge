@@ -278,6 +278,23 @@ other.command("just one line")
 
 
 class TestKeepComments:
+    def test_legacy_3dec_tetrahedron_ampersand_continuation(self):
+        from itasca_mcp_bridge.utils.command_splitter import split_engine_commands
+
+        source = (
+            "block create tetrahedron 0,0,0 &\n"
+            "1,0,0 &\n"
+            "0,1,0 &\n"
+            "0,0,1 &\n"
+            "joint-set 1 1 1 1 &\n"
+            " group 'None'\n"
+            "model cycle 1\n"
+        )
+        assert split_engine_commands(source) == [
+            "block create tetrahedron 0,0,0 1,0,0 0,1,0 0,0,1 joint-set 1 1 1 1 group 'None'",
+            "model cycle 1",
+        ]
+
     def test_comments_dropped_by_default(self):
         from itasca_mcp_bridge.utils.command_splitter import split_engine_commands
 

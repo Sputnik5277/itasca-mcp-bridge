@@ -80,8 +80,22 @@ class _Signal:
             fn(*args)
 
 
-class _Widget:
+class _Properties:
+    """Qt dynamic properties: on the C++ object, shared by all its wrappers."""
+
+    def __init__(self):
+        self._props = {}
+
+    def property(self, name):
+        return self._props.get(name)
+
+    def setProperty(self, name, value):
+        self._props[name] = value
+
+
+class _Widget(_Properties):
     def __init__(self, cls, parent=None, title="", visible=True):
+        super().__init__()
         self._cls = cls
         self._parent = parent
         self.title = title
@@ -116,8 +130,9 @@ class _Item:
         return self._text
 
 
-class _Model:
+class _Model(_Properties):
     def __init__(self):
+        super().__init__()
         self.rowsInserted = _Signal()
         self.rowsRemoved = _Signal()
         self.dataChanged = _Signal()
@@ -709,3 +724,207 @@ def test_execute_is_not_recorded_after_uninstall(editor_gui, history):
     gui.execute.triggered.emit(False)
 
     assert _entries(history) == []
+
+
+# ---------------------------------------------------------------------------
+# Editing a data file
+# ---------------------------------------------------------------------------
+
+
+def _editor_with_notices(gui, title):
+    """An editor page announcing its buffer like the product's does."""
+    editor = gui.view("data_file", title)
+    for name in ("modifiedNotice", "noLongerModifiedNotice", "saveNotice", "closeNotice"):
+        setattr(editor.page, name, _Signal())
+    return editor
+
+
+def _save(editor, path):
+    # The product: clean first, then the save notice, in the same instant.
+    editor.page.noLongerModifiedNotice.emit(path, "Edit")
+    editor.page.saveNotice.emit(path, "Edit")
+    _Timer.flush()
+
+
+def test_edit_and_save_report_the_diff(gui, history, tmp_path):
+    script = tmp_path / "script.dat"
+    script.write_text("model new\nmodel cycle 10\n")
+    path = str(script).replace("\\", "/")
+    editor = _editor_with_notices(gui, "script")
+    _install(gui, history)
+    _entries(history)
+
+    editor.page.modifiedNotice.emit(path, "Edit")
+    script.write_text("model new\nmodel cycle 100\nmodel save 'a'\n")
+    _save(editor, path)
+
+    assert _entries(history) == [
+        ("view", "script", {"kind": "data_file", "event": "modified", "path": path}),
+        ("view", "script", {
+            "kind": "data_file", "event": "saved", "path": path,
+            "diff": "@@ -1,2 +1,3 @@\n model new\n-model cycle 10\n+model cycle 100\n+model save 'a'",
+        }),
+    ]
+
+
+def test_modified_announced_twice_is_one_edit_from_the_first_baseline(gui, history, tmp_path):
+    script = tmp_path / "script.dat"
+    script.write_text("model new\n")
+    path = str(script).replace("\\", "/")
+    editor = _editor_with_notices(gui, "script")
+    _install(gui, history)
+    _entries(history)
+
+    editor.page.modifiedNotice.emit(path, "Edit")
+    script.write_text("model new\nmodel cycle 10\n")  # someone else wrote the file meanwhile
+    editor.page.modifiedNotice.emit(path, "Edit")
+    script.write_text("model new\nmodel cycle 10\nmodel save 'a'\n")
+    _save(editor, path)
+
+    events = _entries(history)
+    assert [e[2]["event"] for e in events] == ["modified", "saved"]
+    assert events[1][2]["diff"] == "@@ -1 +1,3 @@\n model new\n+model cycle 10\n+model save 'a'"
+
+
+def test_save_without_a_baseline_has_no_diff(gui, history, tmp_path):
+    # Editing began before the bridge was watching: nothing to compare with.
+    script = tmp_path / "script.dat"
+    script.write_text("model new\n")
+    path = str(script).replace("\\", "/")
+    editor = _editor_with_notices(gui, "script")
+    _install(gui, history)
+    _entries(history)
+
+    _save(editor, path)
+
+    assert _entries(history) == [("view", "script", {"kind": "data_file", "event": "saved", "path": path})]
+
+
+def test_discarding_edits_is_reported_as_reverted(gui, history, tmp_path, monkeypatch):
+    script = tmp_path / "script.dat"
+    script.write_text("model new\n")
+    path = str(script).replace("\\", "/")
+    editor = _editor_with_notices(gui, "script")
+    _install(gui, history)
+    _entries(history)
+    clock = [1000.0]
+    monkeypatch.setattr(views_module.time, "time", lambda: clock[0])
+
+    editor.page.modifiedNotice.emit(path, "Edit")
+    clock[0] += 3.0  # typed, thought about it, undid it
+    editor.page.noLongerModifiedNotice.emit(path, "Edit")
+    _Timer.flush()
+
+    assert [e[2]["event"] for e in _entries(history)] == ["modified", "reverted"]
+
+
+def test_a_clean_right_after_modified_is_a_reload_not_a_revert(gui, history, tmp_path, monkeypatch):
+    # The editor loading the file from disk sends modified then clean within one pass.
+    script = tmp_path / "script.dat"
+    script.write_text("model new\n")
+    path = str(script).replace("\\", "/")
+    editor = _editor_with_notices(gui, "script")
+    _install(gui, history)
+    _entries(history)
+
+    editor.page.modifiedNotice.emit(path, "Edit")
+    editor.page.noLongerModifiedNotice.emit(path, "Edit")
+    _Timer.flush()
+    assert [e[2]["event"] for e in _entries(history)] == ["modified", "reloaded"]
+
+    # A person typing and undoing takes longer than that.
+    clock = [1000.0]
+    monkeypatch.setattr(views_module.time, "time", lambda: clock[0])
+    editor.page.modifiedNotice.emit(path, "Edit")
+    clock[0] += 5.0
+    editor.page.noLongerModifiedNotice.emit(path, "Edit")
+    _Timer.flush()
+    assert [e[2]["event"] for e in _entries(history)] == ["modified", "reverted"]
+
+
+def test_a_large_diff_is_truncated(gui, history, tmp_path):
+    script = tmp_path / "script.dat"
+    script.write_text("".join(f"line {i}\n" for i in range(200)))
+    path = str(script).replace("\\", "/")
+    editor = _editor_with_notices(gui, "script")
+    _install(gui, history)
+    _entries(history)
+
+    editor.page.modifiedNotice.emit(path, "Edit")
+    script.write_text("".join(f"changed {i}\n" for i in range(200)))
+    _save(editor, path)
+
+    saved = _entries(history)[-1][2]
+    assert saved["truncated"] is True
+    assert len(saved["diff"].splitlines()) <= views_module.MAX_DIFF_LINES + 1
+    assert saved["diff"].endswith("more lines]")
+
+
+def test_modified_marker_in_the_title_is_not_a_rename(gui, history):
+    editor = gui.view("data_file", "script")
+    _install(gui, history)
+    _entries(history)
+
+    editor.dock.title = "script*"
+    gui.focus_on(editor.body)
+
+    assert [e[2]["event"] for e in _entries(history)] == ["active"]
+
+
+def test_edits_are_not_recorded_after_uninstall(gui, history, tmp_path):
+    path = str(tmp_path / "script.dat").replace("\\", "/")
+    editor = _editor_with_notices(gui, "script")
+    tracker = _install(gui, history)
+    _entries(history)
+
+    tracker.uninstall()
+    editor.page.modifiedNotice.emit(path, "Edit")
+    _save(editor, path)
+
+    assert _entries(history) == []
+
+
+# ---------------------------------------------------------------------------
+# Wrappers replaced under the tracker (see the module's Identity section)
+# ---------------------------------------------------------------------------
+
+
+def _rewrap(widget, **shared):
+    """A new Python wrapper for the same C++ object: same properties and signals."""
+    new = type(widget).__new__(type(widget))
+    new.__dict__.update(widget.__dict__)
+    new.__dict__.update(shared)
+    return new
+
+
+def test_a_page_seen_through_a_new_wrapper_is_not_hooked_again(gui, history, tmp_path):
+    # PySide2 5.11 declares a live page's wrapper dead and hands out a new one;
+    # the old wrapper's connections live on in Qt, so hooking the new one too
+    # had every notice arrive once per wrapper (PFC 6.0: one save, 12 `saved`).
+    script = tmp_path / "script.dat"
+    script.write_text("model new\n")
+    path = str(script).replace("\\", "/")
+    editor = _editor_with_notices(gui, "script")
+    tracker = _install(gui, history)
+    _entries(history)
+
+    gui.widgets[gui.widgets.index(editor.page)] = _rewrap(editor.page)
+    tracker.look()
+    _entries(history)
+
+    editor.page.modifiedNotice.emit(path, "Edit")
+    script.write_text("model new\nmodel cycle 10\n")
+    _save(editor, path)
+
+    assert [e[2]["event"] for e in _entries(history)] == ["modified", "saved"]
+    assert len(editor.page.saveNotice.slots) == 1
+
+
+def test_an_item_list_seen_through_a_new_wrapper_keeps_one_model_hook(gui, history):
+    item_list = gui.item_list(["Ball", "Legend"], visible=True)
+    tracker = _install(gui, history)
+
+    gui.widgets[gui.widgets.index(item_list)] = _rewrap(item_list)
+    tracker.look()
+
+    assert len(item_list.model().rowsInserted.slots) == 1

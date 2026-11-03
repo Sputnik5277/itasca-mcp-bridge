@@ -23,7 +23,12 @@ import threading
 import logging
 from typing import Any, Optional
 
-from .positions import INTERRUPT_CALLBACK_POSITION, EXECUTOR_CALLBACK_POSITION, register_cycle_callback
+from .positions import (
+    INTERRUPT_CALLBACK_POSITION,
+    EXECUTOR_CALLBACK_POSITION,
+    register_cycle_callback,
+    remove_cycle_callback,
+)
 from ..utils.command_log import live_capture_paused
 from ..utils.program_call import expand_program_call
 from ..utils import modal_guard
@@ -56,6 +61,22 @@ def _remove_legacy_callbacks(itasca_module):
             delattr(__main__, name)
         except Exception:
             pass
+
+
+def _running_depth():
+    # type: () -> int
+    # Imported here: execution imports signals.
+    from ..execution.main_thread import running_depth
+
+    return running_depth()
+
+
+def _settle_abandoned_since(depth, error=None):
+    # type: (int, Optional[BaseException]) -> None
+    from ..execution.main_thread import running_depth, settle_abandoned
+
+    if running_depth() > depth:
+        settle_abandoned(depth, error)
 
 
 def _in_cycle_callback():
@@ -556,6 +577,66 @@ def ensure_cycle_callbacks():
 # truncate, so a stale banner leads the next task's log.
 _LOG_CONTROL_RE = re.compile(r"^\s*pro\w*\s+log\b", re.IGNORECASE)
 
+# ``model save`` serializes the engine's cycle-callback table into the
+# .sav, the bridge's two Python callbacks included (by name and position;
+# verified 2026-10-28 on PFC 6.0, 7.0 and 9.7). Restoring such a file in a
+# session where the bridge is not running leaves two dangling names in the
+# registry: the 7.0 and 9.x engines ignore them, the 6.0 engine crashes on
+# the first cycle (python36.dll access violation, preceded by the red
+# "Trying to call the Python function _mcp_bridge_interrupt_check but this
+# function is not defined" when the cycle is driven from Python).
+#
+# So the bridge keeps its names out of save files: it removes both
+# callbacks for the duration of a `model save` it issues and puts them
+# back right after. Matches a single command only; multi-line batches that
+# reach this wrapper unsplit are left alone so a cycling batch never runs
+# with an empty registry. Saves that bypass itasca.command (typed in the
+# GUI console, inside a FISH `command` block, a `program call` form the
+# expander cannot honor) are not covered.
+#
+# Putting them back is a plain set_callback, never remove-then-set: a
+# user's own Python cycle callback may issue the save (a "save every N
+# cycles" callback is ordinary), and on the 6.0 engine removing a
+# (name, position) a second time inside a cycle callback -- after this
+# wrapper's strip already removed it -- kills the process at once (access
+# violation in module3d006.dll; PFC3D 6.00.030, verified 2026-11-01 on the
+# GUI and the console build, with and without the capture layer). Removing
+# a never-registered name there is harmless, and so is remove+set of a
+# live one, so the ordinary pre-dispatch repair is unaffected; only the
+# remove of an entry this same cycle already removed is fatal.
+#
+# This exists for the 6.0 engine; once the bridge drops 6.0 support the
+# regex, _strip_cycle_callbacks, _restore_cycle_callbacks and the two
+# `strip` lines in _wrapped_command can go together.
+_MODEL_SAVE_RE = re.compile(r"^\s*mo\w*[ \t]+sa\w*(?:[ \t][^\n]*)?$", re.IGNORECASE)
+
+
+def _strip_cycle_callbacks(itasca_module):
+    # type: (Any) -> None
+    """Remove both reserved cycle callbacks so a `model save` leaves them out
+    of the file. `_restore_cycle_callbacks` is the inverse."""
+    remove_cycle_callback(itasca_module, "_mcp_bridge_interrupt_check", _interrupt_position)
+    remove_cycle_callback(itasca_module, "_mcp_bridge_executor_callback", EXECUTOR_CALLBACK_POSITION)
+
+
+def _restore_cycle_callbacks(itasca_module, position):
+    # type: (Any, float) -> None
+    """Put back what `_strip_cycle_callbacks` removed, with a plain
+    set_callback: the strip guarantees the names are absent, and a second
+    remove of them inside a cycle callback crashes the 6.0 engine (see
+    _MODEL_SAVE_RE). Not `_re_register_callback`, which removes first."""
+    import __main__
+
+    __main__._mcp_bridge_interrupt_check = _mcp_bridge_interrupt_check  # type: ignore[attr-defined]
+    itasca_module.set_callback("_mcp_bridge_interrupt_check", position)
+    try:
+        from .cycle_executor import _mcp_bridge_executor_callback, is_executor_callback_registered
+    except ImportError:
+        return
+    if is_executor_callback_registered():
+        __main__._mcp_bridge_executor_callback = _mcp_bridge_executor_callback  # type: ignore[attr-defined]
+        itasca_module.set_callback("_mcp_bridge_executor_callback", EXECUTOR_CALLBACK_POSITION)
+
 
 def register_interrupt_callback(itasca_module, position=INTERRUPT_CALLBACK_POSITION):
     # type: (Any, float) -> bool
@@ -600,7 +681,11 @@ def register_interrupt_callback(itasca_module, position=INTERRUPT_CALLBACK_POSIT
         #      callback lookup fail with "function is not defined").
         #   2. Auto-re-register callback after model new/restore (those commands
         #      clear ITASCA's internal callback registry).
-        _original_command = itasca_module.command
+        # A second start() in the same session wraps the engine's own
+        # command again, not the first wrapper: the engine function is kept
+        # on the wrapper as `_bridge_original`, which is also what
+        # unregister_interrupt_callback() puts back.
+        _original_command = getattr(itasca_module.command, "_bridge_original", itasca_module.command)
         import sys as _sys
 
         def _wrapped_command(cmd):
@@ -667,6 +752,15 @@ def register_interrupt_callback(itasca_module, position=INTERRUPT_CALLBACK_POSIT
                 # hard-crashes the engine (see _re_register_callback).
                 if not _in_cycle_callback():
                     _re_register_callback(itasca_module, position)
+            # A `model save` must not carry the bridge's callback names into
+            # the file (see _MODEL_SAVE_RE): strip them for its duration,
+            # restore them in the `finally` below. Not from inside the
+            # executor's cycle callback, whose snippet may run anything;
+            # a user's own cycle callback issuing the save still goes
+            # through here, which is why the restore never removes.
+            strip = checked and not _in_cycle_callback() and _MODEL_SAVE_RE.match(cmd) is not None
+            if strip:
+                _strip_cycle_callbacks(itasca_module)
             seq_before = _callback_failure_seq
             start_cycle = _engine_cycle(itasca_module) if checked else None
             # The engine can raise a modal error box from inside this call
@@ -674,9 +768,14 @@ def register_interrupt_callback(itasca_module, position=INTERRUPT_CALLBACK_POSIT
             # person clicks OK. Mark the window so the guard's timer may
             # dismiss it; outside it, dialogs belong to whoever raised them.
             modal_guard.entered()
+            calls_before = _running_depth()
             try:
                 result = _original_command(cmd)
             except Exception as e:
+                # A snippet the cycle callback was running when the engine
+                # unwound past it is still listed, and still counted as
+                # inside the callback; it will never return.
+                _settle_abandoned_since(calls_before, e)
                 # A failing command inside the cycle callback makes the 6.0 engine
                 # abort the cycling it interrupted (see the resume section
                 # above); record it for the outer cycling command.
@@ -685,11 +784,18 @@ def register_interrupt_callback(itasca_module, position=INTERRUPT_CALLBACK_POSIT
                 raise
             finally:
                 modal_guard.left()
+                _settle_abandoned_since(calls_before)
+                if strip:
+                    try:
+                        _restore_cycle_callbacks(itasca_module, position)
+                    except Exception as e:  # never mask the save's own error
+                        logger.warning("Cycle callback restore after save failed: %s", e)
             if checked:
                 _mcp_bridge_interrupt_check()
                 _resume_if_aborted(itasca_module, _original_command, cmd, start_cycle, seq_before)
             return result
 
+        _wrapped_command._bridge_original = _original_command  # type: ignore[attr-defined]
         itasca_module.command = _wrapped_command
 
         # Remember the module so ensure_cycle_callbacks() can repair the
@@ -703,3 +809,27 @@ def register_interrupt_callback(itasca_module, position=INTERRUPT_CALLBACK_POSIT
     except Exception as e:
         logger.error("Failed to register interrupt callback: %s", e)
         return False
+
+
+def unregister_interrupt_callback(itasca_module):
+    # type: (Any) -> None
+    """Inverse of register_interrupt_callback(), for ``stop()``.
+
+    Removes the engine callback and puts the engine's own ``itasca.command``
+    back. The function stays in ``__main__``: unregistered it is never
+    called, and a save file written by a bridge older than 0.6.5 still
+    names it, so leaving it defined keeps such files restorable.
+
+    Never from inside a cycle callback: mutating the registry there
+    crashes the engine (see _re_register_callback).
+    """
+    global _itasca_module
+    if _in_cycle_callback():
+        raise RuntimeError("cannot unregister the cycle callbacks from inside a cycle callback")
+    # Same registry removal a `model save` does; here it is not undone.
+    _strip_cycle_callbacks(itasca_module)
+    original = getattr(itasca_module.command, "_bridge_original", None)
+    if original is not None:
+        itasca_module.command = original
+    _itasca_module = None
+    logger.info("Interrupt callback unregistered")

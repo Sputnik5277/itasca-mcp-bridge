@@ -85,6 +85,31 @@ Executing a data file (measured on PFC 7.0)
     front. That the person ran it is all that is recorded: what it printed
     is not, and what it does the client reads from the file.
 
+Editing a data file (measured on PFC 7.0)
+    Every ``EditorPage`` announces what happens to its buffer, with the
+    file's full path: ``modifiedNotice`` on the first keystroke that makes
+    the buffer differ from disk, then ``noLongerModifiedNotice`` and
+    ``saveNotice`` back to back on a save -- or ``noLongerModifiedNotice``
+    alone when the edits are discarded or the file reloaded from disk. Those
+    are recorded as ``modified``, ``saved`` and ``reverted`` entries, so
+    the client knows when the person has unsaved work in a file (and had
+    better not write that file itself) and when the file on disk changed
+    under its feet. The GUI shows a modified buffer by a ``*`` after the
+    dock's title; that is stripped from names, not reported as a rename.
+
+    Loading the file from disk -- the editor's answer to an external
+    change, the person's or the GUI's own -- sends the same two notices
+    as typing and undoing, modified then clean, but within one event-loop
+    pass; a clean that follows its modified that closely is recorded as
+    ``reloaded``, not ``reverted``.
+
+    A ``saved`` entry carries the diff of what the person changed: the
+    file is read when the buffer turns modified (what they started from)
+    and again on the save, and the two are compared. Capped in size -- the
+    client reads the file for the rest -- and left out when the file was
+    not readable at either end, or when the editing began before the
+    bridge was watching.
+
 Identity
     A view or list is recognised again by holding its wrapper: the binding
     hands back the same wrapper for a C++ object as long as one is alive,
@@ -99,10 +124,23 @@ Identity
     view whose dock went missing while one of the same kind and name
     turned up is the same view, not one closed and one opened.
 
+    Signals are connected to an object once, and the object -- not the
+    wrapper -- is what remembers it: a Qt dynamic property
+    (``HOOKED_PROPERTY``) set on the C++ object, read back through
+    whatever wrapper the next look gets. Holding the connected wrappers
+    and asking ``is`` was not enough: an editor page whose wrapper had
+    been declared dead was connected again through its new wrapper, the
+    old connections staying alive in Qt, and every notice then arrived
+    once per wrapper there had been (PFC 6.0: one save reported 3, 7,
+    then 12 times as the session went on).
+
 Python 3.6 compatible implementation.
 """
 
+import difflib
 import logging
+import os
+import time
 
 from .history import SOURCE_COMMAND, SOURCE_PLOT_ITEM, SOURCE_PYTHON, SOURCE_VIEW
 
@@ -123,6 +161,22 @@ SHORTCUT_SIGNAL = "activated()"
 EXECUTE_SHORTCUT = "Ctrl+E"
 EXECUTE_MASTER_SHORTCUT = "Ctrl+M"
 
+# An editor page's notices about its buffer: (attribute, signature).
+NOTICE_MODIFIED = ("modifiedNotice", "modifiedNotice(QString,QString)")
+NOTICE_CLEAN = ("noLongerModifiedNotice", "noLongerModifiedNotice(QString,QString)")
+NOTICE_SAVED = ("saveNotice", "saveNotice(QString,QString)")
+NOTICE_CLOSED = ("closeNotice", "closeNotice(QString,QString)")
+
+# Set on a C++ object whose signals this module has connected; on the
+# object, not its Python wrapper (see Identity).
+HOOKED_PROPERTY = "_itasca_mcp_bridge_hooked"
+
+# A file read for a diff, at most; a diff reported, at most.
+MAX_SNAPSHOT_BYTES = 1024 * 1024
+MAX_DIFF_LINES = 80
+MAX_DIFF_CHARS = 4000
+DIFF_CONTEXT_LINES = 2
+
 KIND_PLOT = "plot"
 KIND_DATA_FILE = "data_file"
 
@@ -131,6 +185,14 @@ EVENT_ACTIVE = "active"
 EVENT_CLOSED = "closed"
 EVENT_RENAMED = "renamed"
 EVENT_EXECUTED = "executed"
+EVENT_MODIFIED = "modified"
+EVENT_SAVED = "saved"
+EVENT_REVERTED = "reverted"
+EVENT_RELOADED = "reloaded"
+
+# A buffer clean again this soon after turning modified was not typed in
+# and undone by a person: the editor replaced it with the file on disk.
+RELOAD_WINDOW_S = 1.0
 
 # Module-level reference: a tracker nothing points at is collected and its
 # slots stop firing.
@@ -182,12 +244,68 @@ def class_name(obj):
 
 def view_name(dock):
     # type: (object) -> str
-    """The dock's title, as the plot or file is named in the GUI."""
+    """The dock's title, as the plot or file is named in the GUI.
+
+    Without the ``*`` the editor appends while its buffer has unsaved
+    changes: that is state, reported through the editor's notices.
+    """
     try:
         title = dock.windowTitle()
     except Exception:
         return None
-    return str(title).strip() if title is not None else None
+    if title is None:
+        return None
+    return str(title).strip().rstrip("*").strip()
+
+
+def file_view_name(path):
+    # type: (str) -> str
+    """The name the GUI gives a data file's view: its name without extension."""
+    return os.path.splitext(os.path.basename(path.replace("\\", "/")))[0]
+
+
+def read_text(path):
+    # type: (str) -> str
+    """The file's text, or None when it is missing, too big or unreadable.
+
+    UTF-8 first; failing that the bytes are read as Latin-1, which maps
+    every byte, so a file in a legacy code page still diffs line by line.
+    """
+    try:
+        if os.path.getsize(path) > MAX_SNAPSHOT_BYTES:
+            return None
+        with open(path, "rb") as f:
+            raw = f.read()
+    except (OSError, ValueError):
+        return None
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return raw.decode("latin-1")
+
+
+def unified_diff(before, after):
+    # type: (str, str) -> tuple
+    """``(diff, truncated)``: the hunks between two texts, cut to size.
+
+    No file headers -- the entry names the file -- and no diff at all when
+    the texts are the same (a save that changed nothing).
+    """
+    lines = list(difflib.unified_diff(
+        before.splitlines(), after.splitlines(), n=DIFF_CONTEXT_LINES, lineterm="",
+    ))[2:]
+    if not lines:
+        return "", False
+    truncated = False
+    if len(lines) > MAX_DIFF_LINES:
+        omitted = len(lines) - MAX_DIFF_LINES
+        lines = lines[:MAX_DIFF_LINES] + ["... [{} more lines]".format(omitted)]
+        truncated = True
+    text = "\n".join(lines)
+    if len(text) > MAX_DIFF_CHARS:
+        text = text[:MAX_DIFF_CHARS] + "\n... [truncated]"
+        truncated = True
+    return text, truncated
 
 
 class _View(object):
@@ -226,6 +344,10 @@ class ViewTracker(object):
         self._connected = []  # type: list
         self._execute_action = None  # type: object
         self._shortcuts_hooked = False
+        self._editor_pages = []  # type: list  # pages whose notices are hooked
+        self._baselines = {}  # type: dict  # path -> text when editing began
+        self._modified_at = {}  # type: dict  # path -> when it turned modified
+        self._clean_pending = set()  # type: set  # paths clean again, save not yet seen
 
     # -- install -------------------------------------------------------------
 
@@ -349,6 +471,8 @@ class ViewTracker(object):
                 docks.append(widget)
             elif name in PAGE_KINDS:
                 pages.append((widget, PAGE_KINDS[name]))
+                if PAGE_KINDS[name] == KIND_DATA_FILE:
+                    self._hook_editor_page(widget)
             elif name == ITEM_LIST_CLASS:
                 lists.append(widget)
 
@@ -420,12 +544,12 @@ class ViewTracker(object):
                 self._lists_readable = False
                 logger.info("Plot item lists are not readable with this Qt binding")
                 return
-            for signal in ("rowsInserted", "rowsRemoved", "dataChanged", "modelReset", "layoutChanged"):
-                try:
-                    getattr(model, signal).connect(self._schedule)
-                except Exception:
-                    pass
-            self._connected.append(model)
+            if _first_hook(model, self._connected):
+                for signal in ("rowsInserted", "rowsRemoved", "dataChanged", "modelReset", "layoutChanged"):
+                    try:
+                        getattr(model, signal).connect(self._schedule)
+                    except Exception:
+                        pass
             self._lists.append(_ItemList(widget, model))
 
         # A list inside a plot's own dock is that plot's.
@@ -622,6 +746,96 @@ class ViewTracker(object):
         except Exception as e:
             logger.debug("View tracking could not record an execute: %s", e)
 
+    # -- editing a data file -------------------------------------------------
+
+    def _hook_editor_page(self, page):
+        # type: (object) -> None
+        """Listen to the page's buffer notices, once per page (not per wrapper)."""
+        if not _first_hook(page, self._editor_pages):
+            return
+        for (attribute, signature), slot in (
+            (NOTICE_MODIFIED, self._on_modified),
+            (NOTICE_CLEAN, self._on_clean),
+            (NOTICE_SAVED, self._on_saved),
+            (NOTICE_CLOSED, self._on_editor_closed),
+        ):
+            self._connect(page, attribute, signature, slot)
+
+    def _on_modified(self, path, *args):
+        """The buffer differs from disk: remember what the person started from."""
+        if not self._active:
+            return
+        try:
+            path = str(path)
+            self._clean_pending.discard(path)
+            if path in self._baselines:
+                # Announced again mid-edit (seen on 9.8): the person is still
+                # editing from the same starting point, nothing new to say.
+                return
+            self._baselines[path] = read_text(path)
+            self._modified_at[path] = time.time()
+            self._record_file(path, {"kind": KIND_DATA_FILE, "event": EVENT_MODIFIED})
+        except Exception as e:
+            logger.debug("View tracking could not record an edit: %s", e)
+
+    def _on_clean(self, path, *args):
+        """The buffer matches disk again: a save (its notice follows at once) or a revert."""
+        if not self._active:
+            return
+        try:
+            path = str(path)
+            self._clean_pending.add(path)
+            self._core.QTimer.singleShot(0, lambda: self._settle_clean(path))
+        except Exception as e:
+            logger.debug("View tracking could not follow a buffer: %s", e)
+
+    def _settle_clean(self, path):
+        if path not in self._clean_pending:
+            return  # a save claimed it
+        self._clean_pending.discard(path)
+        self._baselines.pop(path, None)
+        modified_at = self._modified_at.pop(path, None)
+        if not self._active:
+            return
+        reloaded = modified_at is not None and time.time() - modified_at < RELOAD_WINDOW_S
+        event = EVENT_RELOADED if reloaded else EVENT_REVERTED
+        self._record_file(path, {"kind": KIND_DATA_FILE, "event": event})
+
+    def _on_saved(self, path, *args):
+        """The file on disk is now what the person wrote; report it with the diff."""
+        if not self._active:
+            return
+        try:
+            path = str(path)
+            self._clean_pending.discard(path)
+            before = self._baselines.pop(path, None)
+            self._modified_at.pop(path, None)
+            data = {"kind": KIND_DATA_FILE, "event": EVENT_SAVED}
+            if before is not None:
+                after = read_text(path)
+                if after is not None:
+                    diff, truncated = unified_diff(before, after)
+                    if diff:
+                        data["diff"] = diff
+                    if truncated:
+                        data["truncated"] = True
+            self._record_file(path, data)
+        except Exception as e:
+            logger.debug("View tracking could not record a save: %s", e)
+
+    def _on_editor_closed(self, path, *args):
+        try:
+            path = str(path)
+        except Exception:
+            return
+        self._baselines.pop(path, None)
+        self._clean_pending.discard(path)
+
+    def _record_file(self, path, data):
+        # type: (str, dict) -> None
+        data["path"] = path
+        self._history.add(SOURCE_VIEW, file_view_name(path), data=data)
+
     # -- helpers -------------------------------------------------------------
 
     def _find_view(self, dock):
@@ -652,6 +866,27 @@ class ViewTracker(object):
                     item_list.items = items
                 return items
         return None
+
+
+def _first_hook(obj, seen):
+    # type: (object, list) -> bool
+    """True the first time ``obj`` comes by; mark it so its next wrapper says no.
+
+    The mark is a Qt dynamic property on the C++ object (see Identity):
+    a wrapper the binding declared dead while the object lives on would
+    otherwise have the object connected once more, and every signal then
+    arrives once per wrapper. ``seen`` keeps the wrappers connected so far
+    and is the identity fallback for an object that has no properties.
+    """
+    try:
+        if obj.property(HOOKED_PROPERTY):
+            return False
+        obj.setProperty(HOOKED_PROPERTY, True)
+    except Exception:
+        if any(obj is o for o in seen):
+            return False
+    seen.append(obj)
+    return True
 
 
 def _containing(docks, widget):

@@ -52,8 +52,26 @@ def register_cycle_callback(itasca_module, name, position):
     in the cycling sequence (see the positions above); it is the low-level
     register primitive shared by the interrupt and executor registration.
     """
+    remove_cycle_callback(itasca_module, name, position)
+    itasca_module.set_callback(name, position)
+
+
+def remove_cycle_callback(itasca_module, name, position):
+    # type: (Any, str, float) -> None
+    """Remove one of the bridge's reserved cycle callbacks, idempotently.
+
+    No error when the name is absent, and tolerant of products/mocks that
+    lack ``remove_callback``. Only ever called with the bridge's own
+    reserved names at their fixed positions (see register_cycle_callback).
+
+    Idempotent at the Python level only: inside a cycle callback the 6.0
+    engine crashes when a ``(name, position)`` removed earlier in that
+    same cycle is removed again (verified 2026-11-01, PFC3D 6.00.030).
+    Callers that strip the callbacks and later put them back from inside
+    a callback must restore with a plain ``set_callback`` (see
+    ``signals.interrupt._restore_cycle_callbacks``).
+    """
     try:
         itasca_module.remove_callback(name, position)
     except Exception:
         pass
-    itasca_module.set_callback(name, position)

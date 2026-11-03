@@ -10,6 +10,113 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Own the simulation research HTML, editable source, evidence and planning roadmap migrated from `Sputnik5277/lu_color_plot`; add English and Chinese README entry points.
 - Record the unified `itasca-mcp + bridge` mainline, legacy per-product migration references, and separate UDEC / desktop clarification tasks. Bridge runtime code and package version are unchanged.
 
+## [0.6.8] - 2026-11-03
+
+### Fixed
+- A data file's `saved` entry arrived several times for one save on
+  PFC 6.0 / 7.0 (3, then 7, then 12 times as the session went on), and
+  the editor's other notices were connected as many times over. PySide2
+  5.11 declares a live editor page's Python wrapper dead and hands out a
+  new one; the page was connected again through each, the old connections
+  staying alive in Qt. A connected page or plot-item model is now marked
+  on the C++ object itself (a Qt dynamic property), so a new wrapper of it
+  is left alone. Measured on PFC 6.0: one save, one `saved`.
+
+## [0.6.7] - 2026-11-02
+
+### Added
+- The console history reports what the person does to a data file in the
+  GUI editor: `modified` when the buffer first differs from disk, `saved`
+  when they save it (with a size-capped unified diff of what changed since
+  they began editing, and the file's path), `reverted` when they undo
+  their edits, `reloaded` when the editor takes the file from disk (an
+  external change, including the bridge's own). A client that writes
+  files the person may be editing can now tell when to hold off and when
+  to re-read.
+- The files the bridge runs are listed in the GUI project's Data Files,
+  as a `program call` typed at the product's prompt would list them: a
+  data file the bridge expands, and the Python script of every task once
+  the task is over. The file shows as closed in the Project pane and can
+  be opened or rerun from there; a file already listed (one the person
+  may have open) is left alone, and the view in front stays in front.
+- A data file the bridge's code changes on disk while the person has it
+  open in the GUI editor is reloaded right away, instead of when they next
+  switch windows: after a snippet or a task the editor is asked to check
+  its files, and the one-button "will be reloaded" notice that check
+  raises for an unmodified buffer is accepted by the bridge. A buffer with
+  unsaved edits still gets the GUI's Load / Save / Do Nothing choice.
+
+### Fixed
+- A data file with unsaved edits is no longer reported as renamed to
+  `name*` and back: the editor's modified marker is stripped from view
+  names.
+
+## [0.6.6] - 2026-11-01
+
+### Fixed
+- `model save` issued from a user's own Python cycle callback (a "save
+  every N cycles" callback) crashed PFC 6.0 since 0.6.5: the restore after
+  the save removed the bridge's callbacks a second time inside the cycle
+  callback, which that engine does not survive. The restore is now a plain
+  `set_callback`. Saves from callbacks stay free of the bridge's names.
+
+## [0.6.5] - 2026-10-28
+
+### Added
+- `itasca_mcp_bridge.status()` returns the bridge's state: `running`,
+  `version`, and when running `host`, `port`, `mode`, `busy` and the
+  `task_id` of the task the engine is executing for a client.
+- `itasca_mcp_bridge.stop()` shuts the bridge down and leaves the product
+  as it was before `start()`: HTTP server and task pump stopped, queued
+  requests answered with an error, console capture, view tracking and the
+  modal guard removed, the two cycle callbacks removed from the engine
+  and `itasca.command` unwrapped. Refuses while a task or snippet is
+  executing; `start()` works again afterwards in the same session. Ctrl+C
+  on a console-mode bridge ends in the same teardown.
+
+### Changed
+- `start()` while a bridge is already running in the session raises
+  with a pointer to `stop()`, instead of wrapping the engine a second
+  time.
+
+### Fixed
+- `model save` no longer writes the bridge's two cycle callbacks into the
+  save file. The engine serializes its cycle-callback table into the
+  `.sav` (PFC 6.0, 7.0 and 9.7 all do), so a file saved while the bridge
+  was running carried `_mcp_bridge_interrupt_check` and
+  `_mcp_bridge_executor_callback` by name. Restoring it in a session
+  without the bridge left those names dangling: the 7.0 and 9.x engines
+  ignore them, the 6.0 engine crashes on the first cycle, after printing
+  "Trying to call the Python function _mcp_bridge_interrupt_check but this
+  function is not defined" when the cycle is driven from Python. The
+  bridge now removes both callbacks for the duration of a `model save` it
+  issues (including saves inside a called `.dat`) and re-registers them
+  right after. Saves typed in the GUI console or issued inside a FISH
+  `command` block do not pass through the bridge and are not covered.
+  Files saved by earlier bridge versions keep their names: restore and
+  re-save them with the bridge running to clean them, or define the two
+  names as no-op functions before restoring without it.
+
+## [0.6.4] - 2026-10-20
+
+### Fixed
+- A client that drops its connection no longer prints a
+  `ConnectionAbortedError` (WinError 10053) traceback into the product
+  console. Other request failures go to the bridge log instead of the
+  console.
+- Some engine errors raised inside a Python API call never reach Python
+  (PFC3D 7.0: `itasca.facetarray.set_conveyor` with a velocity normal to
+  the facets). The engine unwinds past the call, shows the error in a
+  message box, and the Python code is never resumed. The request used to
+  wait out its timeout and report "stuck in a C extension", and the bridge
+  state the call had set up stayed in place. One result: every later cycle
+  typed in the GUI console stopped at once with "interrupted by user". The
+  bridge now notices such a call the next time the code that made it runs
+  again. It answers the request with the engine's message (error code
+  `engine_abandoned`, or a failed task) and puts its own state back. The
+  modal guard's window now covers the whole snippet or task, not only
+  `itasca.command`, so the box is dismissed and its text is reported.
+
 ## [0.6.3] - 2026-10-05
 
 ### Added

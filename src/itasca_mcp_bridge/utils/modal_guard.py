@@ -25,10 +25,18 @@ refuses that recursion -- and that is exactly the bridge's task pump:
 its normal rate. Measured on PFC3D 6.00.030: during a 2.1s box, 67 ticks
 of a 25ms timer against 0 of the pump.
 
+Not every such box comes from a command. An error the engine raises inside
+a Python API call (``itasca.facetarray.set_conveyor`` with a velocity
+normal to the facets, measured on PFC3D 7.00) shows a box of the same kind
+whatever "Raise Dialog on Error" says, and the call never returns: see
+``execution.main_thread._running``. What the box said is kept for that
+call's response (``dialogs_since``).
+
 Scope, deliberately narrow -- this runs inside someone's GUI:
 
-- Only while the bridge itself is inside an engine command. A box the
-  person at the keyboard raised while the bridge was idle is theirs.
+- Only while the bridge itself is running code on the engine's main
+  thread. A box the person at the keyboard raised while the bridge was
+  idle is theirs.
 - Only a ``QMessageBox`` carrying exactly one button. One button offers
   no choice, so pressing it decides nothing the engine was asking about.
   Anything else is left alone and reported once to the log: a bridge that
@@ -41,6 +49,16 @@ Only the error box blocks. The "List of Warnings" dialog (Raise Dialog on
 Warning) is non-modal by design -- the manual has it left open alongside
 the program -- and so is the cycling dialog; neither holds the engine
 call, and neither is this module's business.
+
+One more box is answered, idle or not: the editor's "Editor file ... will
+be reloaded (It was modified externally)" notice, a single OK the GUI
+shows before it reloads a data file that changed on disk under an open,
+unmodified editor (measured on PFC 7.0). The bridge brings that box up
+itself -- its code wrote the file, then asked the editor to look (see
+``console.project_files.refresh_editors``) -- so that the person sees the
+change without switching windows, and the OK is the bridge's to press.
+The three-button box for a file with unsaved edits is a real choice and
+is left to the person.
 
 Python 3.6 compatible implementation.
 """
@@ -62,13 +80,19 @@ DEFAULT_POLL_INTERVAL_MS = 25
 _timer = None  # type: Any
 _qt_widgets = None  # type: Any
 
-# Depth of engine commands the bridge is currently inside. Every engine
-# command the bridge issues goes through one wrapper
-# (``signals.interrupt._wrapped_command``), which brackets the C call with
-# ``entered()`` / ``left()``; nesting comes from ``program call`` expansion
-# and from snippets run in a cycle callback. Commands run on the engine's
-# main thread, so a plain counter is enough.
+# How deep the bridge is in its own work on the engine's main thread. The
+# main-thread executor brackets each call it runs with ``entered()`` /
+# ``left()``, and so does the one wrapper every engine command goes through
+# (``signals.interrupt._wrapped_command``); nesting comes from ``program
+# call`` expansion and from snippets run in a cycle callback. All of it is
+# on the engine's main thread, so a plain counter is enough.
 _depth = 0
+
+# What the dismissed boxes said, newest last, and how many were dismissed
+# in all, so a caller can ask for the ones since a mark of its own.
+_dismissed = []  # type: List[str]
+_dismissed_total = 0
+_DISMISSED_KEPT = 20
 
 # Modal dialogs already reported as left alone, so a dialog that sits there
 # does not write a log line every tick. Keyed by what the dialog says, not
@@ -82,6 +106,10 @@ _reported = set()
 # is not reported afresh.
 FORGET_AFTER_S = 2.0
 _last_seen = 0.0
+
+# What the editor's reload notice says (PFC 7.0: "Editor file <path> will
+# be reloaded.\n  (It was modifed externally)" -- sic).
+RELOAD_NOTICE_MARK = "will be reloaded"
 
 
 def entered():
@@ -97,6 +125,40 @@ def left():
     global _depth
     if _depth > 0:
         _depth -= 1
+
+
+def depth():
+    # type: () -> int
+    """Current depth, to hand back to ``unwind_to``."""
+    return _depth
+
+
+def unwind_to(saved_depth):
+    # type: (int) -> None
+    """Drop back to ``saved_depth``: for a call whose ``left()`` never ran."""
+    global _depth
+    _depth = min(_depth, max(0, int(saved_depth)))
+
+
+def dialog_mark():
+    # type: () -> int
+    """A mark to pass to ``dialogs_since`` later."""
+    return _dismissed_total
+
+
+def dialogs_since(mark):
+    # type: (int) -> List[str]
+    """What the boxes dismissed after ``mark`` said, oldest first."""
+    count = min(_dismissed_total - mark, len(_dismissed))
+    return list(_dismissed[-count:]) if count > 0 else []
+
+
+def _remember(title, message):
+    # type: (Any, str) -> None
+    global _dismissed_total
+    _dismissed.append(message or str(title))
+    del _dismissed[:-_DISMISSED_KEPT]
+    _dismissed_total += 1
 
 
 def is_armed():
@@ -182,18 +244,48 @@ def _report_once(widget, buttons):
     )
 
 
+def _is_reload_notice(widget):
+    # type: (Any) -> bool
+    """The editor's "file will be reloaded" box: one OK, nothing to decide."""
+    try:
+        if not widget.inherits("QMessageBox"):
+            return False
+        text = str(widget.property("text") or "")
+        if RELOAD_NOTICE_MARK not in text:
+            return False
+        return len(widget.findChildren(_qt_widgets.QAbstractButton)) == 1
+    except Exception:
+        return False
+
+
 def _tick():
     # type: () -> None
-    """One poll. Cheap and silent unless the bridge is mid-command."""
-    if _depth <= 0 or _qt_widgets is None:
+    """One poll. Cheap and silent unless a dialog the guard answers is up."""
+    if _qt_widgets is None:
         return
     try:
         widget = _qt_widgets.QApplication.activeModalWidget()
     except Exception:
         return
     if widget is None:
-        if _reported and time.time() - _last_seen > FORGET_AFTER_S:
+        if _depth > 0 and _reported and time.time() - _last_seen > FORGET_AFTER_S:
             _reported.clear()
+        return
+
+    # The editor's reload notice is answered whether or not the bridge is
+    # running code: the bridge raised it, by changing the file and asking
+    # for the check (see console.project_files.refresh_editors).
+    if _is_reload_notice(widget):
+        try:
+            message = _first_line(widget.property("text"))
+            widget.findChildren(_qt_widgets.QAbstractButton)[0].click()
+        except Exception as exc:
+            logger.debug("Modal guard could not accept the reload notice: %s", exc)
+            return
+        logger.info("Accepted the editor's reload notice: %s", message)
+        return
+
+    if _depth <= 0:
         return
 
     try:
@@ -207,6 +299,7 @@ def _tick():
         title = widget.windowTitle()
         message = _first_line(widget.property("text"))
         buttons[0].click()
+        _remember(title, message)
     except Exception as exc:
         # Never let a dialog the binding cannot describe take the GUI's
         # event loop down with it.
@@ -214,6 +307,20 @@ def _tick():
         return
 
     logger.info("Dismissed a blocking engine dialog: %s -- %s", title, message)
+
+
+def uninstall():
+    # type: () -> None
+    """Disarm the guard (``stop()``): stop its timer and drop it."""
+    global _timer
+    if _timer is None:
+        return
+    try:
+        _timer.stop()
+    except Exception:
+        pass
+    _timer = None
+    logger.info("Modal guard disarmed")
 
 
 def install(interval_ms=DEFAULT_POLL_INTERVAL_MS):

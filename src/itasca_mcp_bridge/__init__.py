@@ -20,7 +20,7 @@ environment variable `ITASCA_MCP_BRIDGE_AUTO_UPGRADE=0` to pin the
 installed version.
 """
 
-__version__ = "0.6.3"
+__version__ = "0.6.8"
 
 from .announce import whats_new  # noqa: F401  (console convenience)
 from .runtime import (  # noqa: F401  (re-exported for compatibility)
@@ -28,6 +28,7 @@ from .runtime import (  # noqa: F401  (re-exported for compatibility)
     DEFAULT_MAX_TASKS_PER_TICK,
     VALID_RUNTIME_MODES,
 )
+from .runtime import status, stop  # noqa: F401  (console API next to start)
 
 
 def start(
